@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 930a8caa59557aa43ab5f1d988b5902b, type: 3}
+  m_Name: LeipzigColorScheme
+  m_EditorClassIdentifier: 
+  RegionColors:
+  - Region: Mitte
+    Color: {r: 1, g: 0.7283036, b: 0.7058824, a: 1}
+  - Region: Nordost
+    Color: {r: 0.81960785, g: 0.8996484, b: 1, a: 1}
+  - Region: Ost
+    Color: {r: 0.7176471, g: 1, b: 0.7365617, a: 1}
+  - Region: "S\xFCdost"
+    Color: {r: 0.7075472, g: 1, b: 0.9658744, a: 1}
+  - Region: "S\xFCd"
+    Color: {r: 1, g: 0.7264151, b: 0.96175957, a: 1}
+  - Region: "S\xFCdwest"
+    Color: {r: 1, g: 0.9742451, b: 0.6431373, a: 1}
+  - Region: West
+    Color: {r: 0.841088, g: 0.7075472, b: 1, a: 1}
+  - Region: Alt-West
+    Color: {r: 1, g: 0.8629897, b: 0.7075472, a: 1}
+  - Region: Nordwest
+    Color: {r: 0.8841455, g: 1, b: 0.6784314, a: 1}
+  - Region: Nord
+    Color: {r: 0.7169812, g: 0.7169812, b: 1, a: 1}
