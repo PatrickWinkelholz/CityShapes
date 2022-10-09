@@ -10,24 +10,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a451d2b24adad3c4faf244aea640d019, type: 3}
-  m_Name: LeipzigLandmarksBackup
+  m_Name: LeipzigLandmarks_Approx
   m_EditorClassIdentifier: 
   Landmarks:
   - Name: "V\xF6lkerschlachtdenkmal"
     LatLongInput: 51.31237592635076, 12.413287235900683
-    Location: {x: 0, y: 0}
+    Location: {x: 51.312374, y: 12.413287}
   - Name: Hauptbahnhof
     LatLongInput: 51.34440756847884, 12.380811485393146
-    Location: {x: 0, y: 0}
+    Location: {x: 51.344406, y: 12.380812}
   - Name: Red Bull Arena
     LatLongInput: 51.34622033603056, 12.350197336137755
-    Location: {x: 0, y: 0}
+    Location: {x: 51.346222, y: 12.350198}
   - Name: Zoo Leipzig
     LatLongInput: 51.3484846400103, 12.370995000237984
-    Location: {x: 0, y: 0}
+    Location: {x: 51.348484, y: 12.370995}
   - Name: Panorama Tower
     LatLongInput: 51.3484846400103, 12.370995000237984
-    Location: {x: 0, y: 0}
+    Location: {x: 51.348484, y: 12.370995}
   - Name: Panometer
     LatLongInput: 51.31432934041648, 12.386810788573433
-    Location: {x: 0, y: 0}
+    Location: {x: 51.31433, y: 12.386811}

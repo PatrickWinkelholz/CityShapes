@@ -19,9 +19,9 @@ public class LandmarkGameMode : GameMode
         {
             Instantiate(Marker, (Vector3)data.Location, Quaternion.identity);
         }
-        foreach (LandmarkCollection.LandmarkData data in _NewLandmarks.Landmarks)
-        {
-            Instantiate(NewMarker, (Vector3)data.Location, Quaternion.identity);
-        }
+        //foreach (LandmarkCollection.LandmarkData data in _NewLandmarks.Landmarks)
+        //{
+        //    Instantiate(NewMarker, (Vector3)data.Location, Quaternion.identity);
+        //}
     }
 }

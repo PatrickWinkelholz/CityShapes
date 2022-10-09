@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class PausePanel : MonoBehaviour
 {
+    private bool _BonnSelected = true;
+
     public bool Paused => _Paused;
     private bool _Paused = false;
 
@@ -30,7 +32,7 @@ public class PausePanel : MonoBehaviour
 
     private void Start()
     {
-        UpdateHighscore();
+        UpdateScoreDisplay();
     }
 
     private void OnEnable()
@@ -51,27 +53,50 @@ public class PausePanel : MonoBehaviour
 
     public void TogglePause()
     {
-        _ScoreDisplay.text = GameManager.Instance.Score.ToString();
+        UpdateScoreDisplay();
         _Paused = !_Paused;
         GameManager.Instance.Camera.Blocked = _Paused;
         _TargetPosition = _Paused ? _PausedPosition : _NotPausedPosition;
     }
 
+    private void UpdateScoreDisplay()
+    {
+        _ScoreDisplay.text = _BonnSelected == GameManager.Instance.PlayingBonn ? GameManager.Instance.Score.ToString() : "-";
+
+        string key = _BonnSelected ? "Bonn" : "Leipzig";
+        if (PlayerPrefs.HasKey(key))
+        {
+            _HighScoreDisplay.text = PlayerPrefs.GetInt(key).ToString();
+        }
+        else
+        {
+            _HighScoreDisplay.text = "-";
+        }
+    }
+
     public void OnDistrictsPressed()
     {
+        _BonnSelected = true;
+
         _LandmarksButton.interactable = true;
         _DistrictsButton.interactable = false;
+
+        UpdateScoreDisplay();
     }
 
     public void OnLandmarksPressed()
     {
+        _BonnSelected = false;
+
         _LandmarksButton.interactable = false;
         _DistrictsButton.interactable = true;
+
+        UpdateScoreDisplay();
     }
 
     public void UpdateHighscore()
     {
-        string key = GameManager.Instance.GameMode.GameModeName;
+        string key = GameManager.Instance.PlayingBonn ? "Bonn" : "Leipzig"; //GameManager.Instance.GameMode.GameModeName;
         if (PlayerPrefs.HasKey(key))
         {
             int highscore = PlayerPrefs.GetInt(key);
@@ -83,11 +108,6 @@ public class PausePanel : MonoBehaviour
         else
         {
             PlayerPrefs.SetInt(key, GameManager.Instance.Score);
-        }
-
-        if (PlayerPrefs.HasKey(key))
-        {
-            _HighScoreDisplay.text = PlayerPrefs.GetInt(key).ToString();
         }
     }
 
@@ -103,6 +123,7 @@ public class PausePanel : MonoBehaviour
 
     public void OnRestartPressed()
     {
+        GameManager.Instance.PlayingBonn = _BonnSelected;
         GameManager.Instance.RestartGame();
         TogglePause();
     }

@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class GameManager : MonoBehaviour
 {
+    public bool PlayingBonn = true;
+
+    public City Bonn = default;
+    public City Leipzig = default;
+
     public static GameManager Instance { get; private set; }
     public int Score;
     public bool GameOver { get; private set; }

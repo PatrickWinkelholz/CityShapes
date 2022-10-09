@@ -14,14 +14,14 @@ namespace SVGtoUnitySprite
 
         static OutputMode outputMode = OutputMode.CITYDATA;
 
-        static string inSVGFile = "D:\\GitRepos\\Leipzig\\Resources\\svgs\\Leipzig_Ortsteil_24_Paunsdorf.svg";
+        static string inSVGFile = "D:\\GitRepos\\Leipzig\\Tools\\SVGtoUnitySprite\\Bonn_Stadtbezirk_Bonn.svg";
 
         static string inSpriteFile = "D:\\GitRepos\\Leipzig\\Tools\\SVGtoUnitySprite\\Sprite.png";
         static string outSpritePath = "D:\\GitRepos\\Leipzig\\Leipzig\\Assets\\SVGs";
         static string outSpritePrefix = "shape_";
 
-        static string inCityDataFile = "D:\\GitRepos\\Leipzig\\Tools\\SVGtoUnitySprite\\CityData.asset";
-        static string outCityDataFile = "D:\\GitRepos\\Leipzig\\Leipzig\\Assets\\Data\\CityData.asset";
+        static string inCityDataFile = "D:\\GitRepos\\Leipzig\\Tools\\SVGtoUnitySprite\\Bonn.asset";
+        static string outCityDataFile = "D:\\GitRepos\\Leipzig\\Leipzig\\Assets\\Data\\Bonn.asset";
 
         static void Main(string[] args)
         {
@@ -30,14 +30,14 @@ namespace SVGtoUnitySprite
             XmlDocument doc = new XmlDocument();
             doc.Load(inSVGFile);
 
-            XmlNodeList polyPaths = doc.SelectNodes("//*[local-name()='polyline']");
+            XmlNodeList polyPaths = doc.SelectNodes("//*[local-name()='path']");
             int i = 0;
             string districts = "Districts:";
             foreach (XmlNode polyPath in polyPaths)
             {
                 foreach (XmlAttribute attribute in polyPath.Attributes)
                 {
-                    if (attribute.Name == "points")
+                    if (attribute.Name == "d")
                     {
                         switch (outputMode)
                         {
@@ -45,6 +45,11 @@ namespace SVGtoUnitySprite
 
                                 districts += "\n  - Name: \n    Shape:\n    ";
                                 string[] points = attribute.Value.Split(' ');
+
+                                //bool skipFirst = false; //this is only necessary because for some reason the first point in the bonn svg makes no sense in each path
+
+                                float[] previousCoords = { 0, 0};
+
                                 foreach (string point in points)
                                 {
                                     string[] coords = point.Trim().Split(',');
@@ -52,7 +57,19 @@ namespace SVGtoUnitySprite
                                     {
                                         continue;
                                     }
-                                    districts += "- {x: " + coords[0] + ", y: " + coords[1] + "}\n    ";
+
+                                    //if (!skipFirst)
+                                    //{
+                                    //    skipFirst = true;
+                                    //    continue;
+                                    //}
+
+                                    float[] floatCoords = { float.Parse(coords[0]), float.Parse(coords[1]) };
+                                    floatCoords[0] += previousCoords[0];
+                                    floatCoords[1] += previousCoords[1];
+
+                                    districts += "- {x: " + floatCoords[0] + ", y: " + floatCoords[1] + "}\n    ";
+                                    previousCoords = floatCoords;
                                 }
                                 districts = districts.TrimEnd();
                                 break;

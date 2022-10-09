@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class District : MonoBehaviour
 {
+    public int CityDataIndex = 0;
+
     public Vector2 CenterPoint { get; private set; }
     public string DistrictName { get; private set; }
     public bool Locked { get; set; }
@@ -17,6 +19,30 @@ public class District : MonoBehaviour
     private Color _InitialColor = default;
     private bool _ClickStarted = false;
     private Vector2 _ClickedPosition = Vector2.zero;
+
+    public void TestInit(Vector2[] shape)
+    {
+        _Collider.points = shape;
+        _MeshFilter.mesh = _Collider.CreateMesh(false, false);
+
+        //CityColorScheme.ColorEntry colorEntry = _CityColorScheme.RegionColors.Find(x => x.Region.Equals(districtData.Region));
+        _InitialColor = Color.blue;//colorEntry.Color;
+        _MeshRenderer.material.color = _InitialColor;
+
+        //outline + calculate center
+        List<Vector3> linePositions = new List<Vector3>();
+        foreach (Vector2 point in shape)
+        {
+            linePositions.Add(point);
+        }
+        _LineRenderer.positionCount = linePositions.Count;
+        _LineRenderer.SetPositions(linePositions.ToArray());
+        _LineRenderer.startWidth = 0.01f;
+        _LineRenderer.endWidth = 0.001f;
+        _LineRenderer.startColor = Color.white;
+        _LineRenderer.endColor = Color.black;
+    }
+
 
     public void Initialize(CityData.DistrictData districtData)
     {
