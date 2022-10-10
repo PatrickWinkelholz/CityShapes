@@ -26,7 +26,7 @@ public class District : MonoBehaviour
         _MeshFilter.mesh = _Collider.CreateMesh(false, false);
 
         //CityColorScheme.ColorEntry colorEntry = _CityColorScheme.RegionColors.Find(x => x.Region.Equals(districtData.Region));
-        _InitialColor = Color.blue;//colorEntry.Color;
+        _InitialColor = Color.white;//colorEntry.Color;
         _MeshRenderer.material.color = _InitialColor;
 
         //outline + calculate center
@@ -37,10 +37,10 @@ public class District : MonoBehaviour
         }
         _LineRenderer.positionCount = linePositions.Count;
         _LineRenderer.SetPositions(linePositions.ToArray());
-        _LineRenderer.startWidth = 0.01f;
-        _LineRenderer.endWidth = 0.001f;
-        _LineRenderer.startColor = Color.white;
-        _LineRenderer.endColor = Color.black;
+        //_LineRenderer.startWidth = 0.01f;
+        //_LineRenderer.endWidth = 0.001f;
+        //_LineRenderer.startColor = Color.white;
+        //_LineRenderer.endColor = Color.black;
     }
 
 
