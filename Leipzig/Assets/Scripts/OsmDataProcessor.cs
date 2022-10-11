@@ -30,35 +30,53 @@ struct RelationReference
 //    public Vector2 Point;
 //}
 
-public class GeoNamesTest : MonoBehaviour
+public class OsmDataProcessor
 {
-    public District DistrictPrefab = null;
-
     public const float ShapeScaler = 100.0f;
     public const float SqrMagnitudeDelta = 0.00000000001f;
     public const float SqrMagnitudeLargestWayGap = 0.0001f;
 
     private List<Vector2> _CityShape = new List<Vector2>();
+    private Vector2 _CityCenter = new Vector2();
+    private string _CityName = default;
     private string _CityBoundingBoxString = "";
     private bool _Verified = false;
 
-    private void Awake()
+    public IEnumerator GenerateCityData(string query, System.Action<CityData> callback)
     {
-        StartCoroutine(GenerateCity("Berlin"));
-    }
-
-    private IEnumerator GenerateCity(string cityName)
-    {
-        yield return VerifyCity(cityName);
+        yield return VerifyCity(query);
 
         if (_Verified)
         {
-            yield return ObtainCityShape(cityName);
-            yield return GenerateDistricts(cityName);
+            yield return ObtainCityShape(_CityName);
+
+            string[] bbox = _CityBoundingBoxString.Split(',');
+            string overpassQuery = "area[\"name\"~\"^" + _CityName + "$\",i](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.b;rel[boundary=administrative][admin_level=10](area.b);(._; >;);out qt;";
+            System.Action<string> overpassCallback = overpassData =>
+            {
+                List<RelationData> relations = ProcessOverpassData(overpassData);
+                Debug.Log("Generated " + relations.Count + " districts");
+
+                CityData cityData = new CityData();
+                cityData.Name = _CityName;
+                cityData.Center = _CityCenter * ShapeScaler;
+                cityData.Districts = new List<DistrictData>();
+
+                foreach (RelationData relation in relations)
+                {
+                    DistrictData districtData = new DistrictData();
+                    districtData.Name = relation.Name;
+                    districtData.Shape = GenerateShape(relation);
+                    cityData.Districts.Add(districtData);
+                }
+
+                callback.Invoke(cityData);
+            };
+            yield return ObtainOverpassData(overpassQuery, overpassCallback);
         }
     }
 
-    IEnumerator VerifyCity(string cityName)
+    private IEnumerator VerifyCity(string cityName)
     {
         UnityWebRequest nominatimRequest = UnityWebRequest.Get("https://nominatim.openstreetmap.org/search?q=" + cityName + "&format=xml&addressdetails=1&extratags=1");
         yield return nominatimRequest.SendWebRequest();
@@ -104,10 +122,10 @@ public class GeoNamesTest : MonoBehaviour
                     continue;
                 }
 
-                if (nameSplit[0].ToLower() != cityName.ToLower())
-                {
-                    continue;
-                }
+                //if (nameSplit[0].ToLower() != cityName.ToLower())
+                //{
+                //    continue;
+                //}
 
                 XmlAttribute boundingBox = searchResult.Attributes["boundingbox"];
                 if (boundingBox == null)
@@ -118,6 +136,7 @@ public class GeoNamesTest : MonoBehaviour
 
                 _Verified = true;
                 _CityBoundingBoxString = boundingBox.Value;
+                _CityName = nameSplit[0];
                 yield break;
             }
         }
@@ -126,37 +145,18 @@ public class GeoNamesTest : MonoBehaviour
     private IEnumerator ObtainCityShape(string cityName)
     {
         string[] bbox = _CityBoundingBoxString.Split(',');
-        string overpassQuery = "relation[boundary=administrative][name=\"" + cityName + "\"][\"admin_level\"~\"4|6\"](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ");(._; >;);out qt;";
+        string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityName + "$\",i][\"admin_level\"~\"4|6\"](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ");(._; >;);out qt;";
         System.Action<string> callback = overpassData => 
         {
             List<RelationData> relations = ProcessOverpassData(overpassData);
             if (relations != null && relations.Count > 0)
             {
                 _CityShape = GenerateShape(relations[0]);
+                _CityCenter = relations[0].Center;
             }
             else
             {
                 Debug.LogError("can't generate CityShape, recieved unexpected amount of relations!");
-            }
-        };
-        yield return ObtainOverpassData(overpassQuery, callback);
-    }
-
-    private IEnumerator GenerateDistricts(string cityName)
-    {
-        string[] bbox = _CityBoundingBoxString.Split(',');
-        string overpassQuery = "area[name=" + cityName + "](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.b;rel[boundary=administrative][admin_level=10](area.b);(._; >;);out qt;";
-        System.Action<string> callback = overpassData =>
-        {
-            List<RelationData> relations = ProcessOverpassData(overpassData);
-            Debug.Log("Generated " + relations.Count + " districts");
-
-            foreach (RelationData relation in relations)
-            {
-                List<Vector2> shape = GenerateShape(relation);
-
-                District district = Instantiate(DistrictPrefab);
-                district.TestInit(shape.ToArray());
             }
         };
         yield return ObtainOverpassData(overpassQuery, callback);

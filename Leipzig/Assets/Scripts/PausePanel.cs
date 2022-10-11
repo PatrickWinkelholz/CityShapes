@@ -17,6 +17,9 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private TMPro.TextMeshProUGUI _HighScoreDisplay = null;
     [SerializeField] private Button _DistrictsButton = null;
     [SerializeField] private Button _LandmarksButton = null;
+    [SerializeField] private TMPro.TMP_InputField _SearchInputField = null;
+    [SerializeField] private GameObject _CitySearchPanel = null;
+    [SerializeField] private GameObject _MenuContentPanel = null;
 
     private Vector3 _NotPausedPosition = default;
     private Vector3 _PausedPosition = Vector3.zero;
@@ -61,7 +64,7 @@ public class PausePanel : MonoBehaviour
 
     private void UpdateScoreDisplay()
     {
-        _ScoreDisplay.text = _BonnSelected == GameManager.Instance.PlayingBonn ? GameManager.Instance.Score.ToString() : "-";
+        //_ScoreDisplay.text = _BonnSelected == GameManager.Instance.PlayingBonn ? GameManager.Instance.Score.ToString() : "-";
 
         string key = _BonnSelected ? "Bonn" : "Leipzig";
         if (PlayerPrefs.HasKey(key))
@@ -94,21 +97,33 @@ public class PausePanel : MonoBehaviour
         UpdateScoreDisplay();
     }
 
+    public void OnBackPressed()
+    {
+        _MenuContentPanel.SetActive(true);
+        _CitySearchPanel.SetActive(false);
+    }
+
+    public void OnChangeCityPressed()
+    {
+        _MenuContentPanel.SetActive(false);
+        _CitySearchPanel.SetActive(true);
+    }
+
     public void UpdateHighscore()
     {
-        string key = GameManager.Instance.PlayingBonn ? "Bonn" : "Leipzig"; //GameManager.Instance.GameMode.GameModeName;
-        if (PlayerPrefs.HasKey(key))
-        {
-            int highscore = PlayerPrefs.GetInt(key);
-            if (GameManager.Instance.Score > highscore)
-            {
-                PlayerPrefs.SetInt(key, GameManager.Instance.Score);
-            }
-        }
-        else
-        {
-            PlayerPrefs.SetInt(key, GameManager.Instance.Score);
-        }
+        //string key = GameManager.Instance.PlayingBonn ? "Bonn" : "Leipzig"; //GameManager.Instance.GameMode.GameModeName;
+        //if (PlayerPrefs.HasKey(key))
+        //{
+        //    int highscore = PlayerPrefs.GetInt(key);
+        //    if (GameManager.Instance.Score > highscore)
+        //    {
+        //        PlayerPrefs.SetInt(key, GameManager.Instance.Score);
+        //    }
+        //}
+        //else
+        //{
+        //    PlayerPrefs.SetInt(key, GameManager.Instance.Score);
+        //}
     }
 
     public void OnWebsitePressed()
@@ -123,9 +138,14 @@ public class PausePanel : MonoBehaviour
 
     public void OnRestartPressed()
     {
-        GameManager.Instance.PlayingBonn = _BonnSelected;
+        //GameManager.Instance.PlayingBonn = _BonnSelected;
         GameManager.Instance.RestartGame();
         TogglePause();
+    }
+
+    public void OnSearchPressed()
+    {
+        GameManager.Instance.SearchCity(_SearchInputField.text);
     }
 
     private void Update()

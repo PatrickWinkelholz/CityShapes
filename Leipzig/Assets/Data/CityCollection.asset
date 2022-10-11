@@ -10,6 +10,5 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 287d4f363c8155e4d9aa0cedd1cecf67, type: 3}
-  m_Name: CityData
+  m_Name: CityCollection
   m_EditorClassIdentifier: 
-  Districts: []

@@ -4,26 +4,26 @@ using UnityEngine;
 
 public class DistrictGameMode : GameMode
 {
-    [SerializeField] private City _City = default;
     [SerializeField] private UnityEngine.UI.InputField _NameInputField = default;
     [SerializeField] private UnityEngine.UI.InputField _RegionInputField = default;
 
     private District _CurrentDistrict;
 
     private bool EnterDistrictNamesMode = false;
+    private City _City => GameManager.Instance.City;
 
     public override void DistrictPressed(District district)
     {
-        if (EnterDistrictNamesMode)
-        {
-            CityData.DistrictData districtData = _City.CityData.Districts[district.CityDataIndex];
-            districtData.Name = _NameInputField.text;
-            districtData.Region = _RegionInputField.text;
-            _City.CityData.Districts[district.CityDataIndex] = districtData;
-            district.SetColor(Color.green);
-            district.Locked = true;
-            return;
-        }
+        //if (EnterDistrictNamesMode)
+        //{
+        //    CityData.DistrictData districtData = _City.CityData.Districts[district.CityDataIndex];
+        //    districtData.Name = _NameInputField.text;
+        //    districtData.Region = _RegionInputField.text;
+        //    _City.CityData.Districts[district.CityDataIndex] = districtData;
+        //    district.SetColor(Color.green);
+        //    district.Locked = true;
+        //    return;
+        //}
 
         if (_CurrentDistrict == district)
         {
@@ -51,11 +51,6 @@ public class DistrictGameMode : GameMode
 
     private void OnGameRestarting()
     {
-        GameManager manager = GameManager.Instance;
-        _City.gameObject.SetActive(false);
-        _City = manager.PlayingBonn ? manager.Bonn : manager.Leipzig;
-        _City.gameObject.SetActive(true);
-
         _City.Districts.Reset();
         foreach (District district in _City.Districts)
         {

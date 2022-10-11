@@ -47,7 +47,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e4967cb5ab5bcb40bfdea03710c323c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _CityColorScheme: {fileID: 11400000, guid: 658e97a5b082f624e909fa4294796a4c, type: 2}
+  CityDataIndex: 0
   _Collider: {fileID: 3447967813872253000}
   _MeshFilter: {fileID: 7054642263871108999}
   _MeshRenderer: {fileID: 2078356576270893087}
@@ -322,7 +322,7 @@ LineRenderer:
   - {x: 0, y: 0, z: 1}
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.02
+    widthMultiplier: 0.06
     widthCurve:
       serializedVersion: 2
       m_Curve:

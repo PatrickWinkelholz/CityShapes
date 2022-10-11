@@ -10,7 +10,6 @@ public class CameraController : MonoBehaviour
     public bool Blocked = false;
 
     [SerializeField] private Camera _Camera = null;
-    [SerializeField] private City _City = null;
     [SerializeField] private float _ZoomSpeed = 10.0f;
     [SerializeField] private float _MaxCameraSize = 6.5f;
     [SerializeField] private float _MinCameraSize = 0.8f;
@@ -28,6 +27,12 @@ public class CameraController : MonoBehaviour
         _LastMousePos = Input.mousePosition;
         _StartPosition = transform.position;
         _StartSize = _Camera.orthographicSize;
+    }
+
+    public void ResetPosition(Vector3 startPosition)
+    {
+        _StartPosition = startPosition;
+        transform.position = startPosition;
     }
 
     private void Update()
@@ -91,8 +96,8 @@ public class CameraController : MonoBehaviour
     {
         Vector3 newPosition = transform.position;
         newPosition -= difference * (_Camera.orthographicSize / 1000);
-        newPosition.x = Mathf.Clamp(newPosition.x, _MinCameraPosition.x, _MaxCameraPosition.x);
-        newPosition.y = Mathf.Clamp(newPosition.y, _MinCameraPosition.y, _MaxCameraPosition.y);
+        newPosition.x = Mathf.Clamp(newPosition.x, _StartPosition.x + _MinCameraPosition.x, _StartPosition.x + _MaxCameraPosition.x);
+        newPosition.y = Mathf.Clamp(newPosition.y, _StartPosition.y + _MinCameraPosition.y, _StartPosition.y + _MaxCameraPosition.y);
 
         transform.position = newPosition;
     }

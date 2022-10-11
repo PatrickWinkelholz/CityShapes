@@ -5,7 +5,6 @@ using UnityEngine;
 public class CurrentElementLabel : MonoBehaviour
 {
     [SerializeField] TMPro.TextMeshProUGUI _Text = default;
-    [SerializeField] private City _City = default;
 
     private void OnEnable()
     {
@@ -26,6 +25,6 @@ public class CurrentElementLabel : MonoBehaviour
 
     private void OnGameOver()
     {
-        _Text.text = "You solved " + GameManager.Instance.Score.ToString() + " out of " + _City.Districts.Count;
+        _Text.text = "You solved " + GameManager.Instance.Score.ToString() + " out of " + GameManager.Instance.City.Districts.Count;
     }
 }

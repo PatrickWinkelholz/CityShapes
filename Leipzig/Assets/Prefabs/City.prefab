@@ -43,6 +43,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55c70a25f10d9f547abd835b5bd1326d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _CityData: {fileID: 11400000, guid: c4a39912cd31ddf4e8f6537b70c44005, type: 2}
   _DistrictPrefab: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
     type: 3}
+  _ScaleFactor: 1
