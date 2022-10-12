@@ -20,7 +20,7 @@ public class GameManager : MonoBehaviour
 
     public City City => _City;
     private City _City = default;
-    private OsmDataProcessor _OsmProcessor = new OsmDataProcessor();
+    public OsmDataProcessor OsmProcessor = new OsmDataProcessor();
 
     private void Awake()
     {
@@ -44,33 +44,33 @@ public class GameManager : MonoBehaviour
         GameRestartingEvent?.Invoke();
     }
 
-    public void SearchCity(string cityName)
+    public IEnumerator ChangeCity(string cityName, string boundingBox)
     {
-        cityName = cityName.ToLower();
-
-        if (_CityCollection.Cities.TryGetValue(cityName, out CityData cityData))
+        System.Action<CityData> callback = (cityData) =>
         {
-            if (_City)
+            if (!_CityCollection.Cities.ContainsKey(cityName))
             {
-                Destroy(_City.gameObject);
+                _CityCollection.Cities.Add(cityName, cityData);
             }
-            _City = Instantiate(_CityPrefab);
-            _City.Initialize(cityData);
-            RestartGame();
-        }
-        else
-        {
-            StartCoroutine(_OsmProcessor.GenerateCityData(cityName,(outCityData)=>
+
+            if (cityData.Districts.Count > 0)
             {
                 if (_City)
                 {
                     Destroy(_City.gameObject);
                 }
-                _CityCollection.Cities.Add(cityName, outCityData);
                 _City = Instantiate(_CityPrefab);
-                _City.Initialize(outCityData);
+                _City.Initialize(cityData);
                 RestartGame();
-            }));
+            }
+        };
+        if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
+        {
+            callback.Invoke(outCityData);
+        }
+        else
+        {
+            yield return OsmProcessor.GenerateCityData(cityName, boundingBox, callback);
         }
     }
 

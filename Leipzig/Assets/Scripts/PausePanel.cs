@@ -5,10 +5,8 @@ using UnityEngine.UI;
 
 public class PausePanel : MonoBehaviour
 {
-    private bool _BonnSelected = true;
-
     public bool Paused => _Paused;
-    private bool _Paused = false;
+    private bool _Paused = true;
 
     public static PausePanel Instance;
 
@@ -20,17 +18,22 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private TMPro.TMP_InputField _SearchInputField = null;
     [SerializeField] private GameObject _CitySearchPanel = null;
     [SerializeField] private GameObject _MenuContentPanel = null;
+    [SerializeField] private SearchResultEntry _SearchResultEntryPrefab = default;
+    [SerializeField] private Transform _SearchResultViewportContent = default;
+    [SerializeField] private Transform _LoadingPanel = default;
+    [SerializeField] private Button _BackButton = default;
 
     private Vector3 _NotPausedPosition = default;
     private Vector3 _PausedPosition = Vector3.zero;
     private Vector3 _TargetPosition = default;
+    private GameObject _CurrentPanel = default;
+    private int _HighScore = 0;
 
     private void Awake()
     {
         Instance = this;
+        _CurrentPanel = _CitySearchPanel;
         _NotPausedPosition = new Vector3(0, -Screen.height, 0);
-        _TargetPosition = _NotPausedPosition;
-        transform.position = _NotPausedPosition;
     }
 
     private void Start()
@@ -41,46 +44,68 @@ public class PausePanel : MonoBehaviour
     private void OnEnable()
     {
         GameManager.Instance.GameOverEvent += OnGameOver;
+        GameManager.Instance.GameRestartingEvent += OnRestarting;
     }
 
     private void OnDisable()
     {
         GameManager.Instance.GameOverEvent -= OnGameOver;
+        GameManager.Instance.GameRestartingEvent -= OnRestarting;
     }
 
     private void OnGameOver()
     {
-        UpdateHighscore();
         TogglePause();
     }
 
     public void TogglePause()
     {
-        UpdateScoreDisplay();
         _Paused = !_Paused;
+        if (_Paused)
+        {
+            TrySetNewHighscore();
+        }
+        UpdateScoreDisplay();
         GameManager.Instance.Camera.Blocked = _Paused;
         _TargetPosition = _Paused ? _PausedPosition : _NotPausedPosition;
     }
 
+    private void ChangePanel(GameObject panel)
+    {
+        _CurrentPanel.SetActive(false);
+        _CurrentPanel = panel;
+        panel.SetActive(true);
+    }
+
+    private void OnRestarting()
+    {
+        FetchHighScore();
+        ChangePanel(_MenuContentPanel);
+        _BackButton.gameObject.SetActive(true);
+        TogglePause();
+    }
+
     private void UpdateScoreDisplay()
     {
-        //_ScoreDisplay.text = _BonnSelected == GameManager.Instance.PlayingBonn ? GameManager.Instance.Score.ToString() : "-";
+        _ScoreDisplay.text = GameManager.Instance.Score.ToString();
+        _HighScoreDisplay.text = _HighScore == 0 ? "-" : _HighScore.ToString();
+    }
 
-        string key = _BonnSelected ? "Bonn" : "Leipzig";
+    private void FetchHighScore()
+    {
+        string key = GameManager.Instance.City.gameObject.name;
         if (PlayerPrefs.HasKey(key))
         {
-            _HighScoreDisplay.text = PlayerPrefs.GetInt(key).ToString();
+            _HighScore = PlayerPrefs.GetInt(key);
         }
         else
         {
-            _HighScoreDisplay.text = "-";
+            _HighScore = 0;
         }
     }
 
     public void OnDistrictsPressed()
     {
-        _BonnSelected = true;
-
         _LandmarksButton.interactable = true;
         _DistrictsButton.interactable = false;
 
@@ -89,8 +114,6 @@ public class PausePanel : MonoBehaviour
 
     public void OnLandmarksPressed()
     {
-        _BonnSelected = false;
-
         _LandmarksButton.interactable = false;
         _DistrictsButton.interactable = true;
 
@@ -99,31 +122,22 @@ public class PausePanel : MonoBehaviour
 
     public void OnBackPressed()
     {
-        _MenuContentPanel.SetActive(true);
-        _CitySearchPanel.SetActive(false);
+        ChangePanel(_MenuContentPanel);
     }
 
     public void OnChangeCityPressed()
     {
-        _MenuContentPanel.SetActive(false);
-        _CitySearchPanel.SetActive(true);
+        ChangePanel(_CitySearchPanel);
     }
 
-    public void UpdateHighscore()
+    public void TrySetNewHighscore()
     {
-        //string key = GameManager.Instance.PlayingBonn ? "Bonn" : "Leipzig"; //GameManager.Instance.GameMode.GameModeName;
-        //if (PlayerPrefs.HasKey(key))
-        //{
-        //    int highscore = PlayerPrefs.GetInt(key);
-        //    if (GameManager.Instance.Score > highscore)
-        //    {
-        //        PlayerPrefs.SetInt(key, GameManager.Instance.Score);
-        //    }
-        //}
-        //else
-        //{
-        //    PlayerPrefs.SetInt(key, GameManager.Instance.Score);
-        //}
+        if (GameManager.Instance.Score > _HighScore)
+        {
+            _HighScore = GameManager.Instance.Score;
+            string key = GameManager.Instance.City.gameObject.name;
+            PlayerPrefs.SetInt(key, _HighScore);
+        }
     }
 
     public void OnWebsitePressed()
@@ -138,14 +152,52 @@ public class PausePanel : MonoBehaviour
 
     public void OnRestartPressed()
     {
-        //GameManager.Instance.PlayingBonn = _BonnSelected;
         GameManager.Instance.RestartGame();
-        TogglePause();
     }
 
     public void OnSearchPressed()
     {
-        GameManager.Instance.SearchCity(_SearchInputField.text);
+        StartCoroutine(SearchCityRoutine());
+    }
+
+    private IEnumerator GenerateCityRoutine(string cityName, string boundingBox)
+    {
+        _LoadingPanel.gameObject.SetActive(true);
+        yield return GameManager.Instance.ChangeCity(cityName, boundingBox);
+        _LoadingPanel.gameObject.SetActive(false);
+    }
+
+    private void StartGenerateCityRoutine(string cityName, string boundingBox)
+    {
+        StartCoroutine(GenerateCityRoutine(cityName, boundingBox));
+    }
+
+    private IEnumerator SearchCityRoutine()
+    {
+        _LoadingPanel.gameObject.SetActive(true);
+        string cityName = _SearchInputField.text.ToLower();
+        yield return GameManager.Instance.OsmProcessor.SearchCities(cityName, (searchResults) =>
+        {
+            for (int i = 0; i < _SearchResultViewportContent.childCount; i++)
+            {
+                Destroy(_SearchResultViewportContent.GetChild(i).gameObject);
+            }
+
+            foreach (NominatimResult result in searchResults)
+            {
+                SearchResultEntry entry = Instantiate(_SearchResultEntryPrefab, _SearchResultViewportContent);
+                TMPro.TextMeshProUGUI text = entry.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                if (text)
+                {
+                    text.text = result.DisplayName;
+                }
+                if (entry.TryGetComponent(out Button button))
+                {
+                    button.onClick.AddListener(() => { StartGenerateCityRoutine(result.DisplayName, result.BoundingBox); });
+                }
+            }
+        });
+        _LoadingPanel.gameObject.SetActive(false);
     }
 
     private void Update()

@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class CurrentElementLabel : MonoBehaviour
 {
-    [SerializeField] TMPro.TextMeshProUGUI _Text = default;
+    [SerializeField] private TMPro.TextMeshProUGUI _Text = default;
+    [SerializeField] private UnityEngine.UI.Image _Image = default;
 
     private void OnEnable()
     {
@@ -21,6 +22,7 @@ public class CurrentElementLabel : MonoBehaviour
     private void OnElementChanged(object sender, string element)
     {
         _Text.text = element;
+        _Image.enabled = element != "";
     }
 
     private void OnGameOver()

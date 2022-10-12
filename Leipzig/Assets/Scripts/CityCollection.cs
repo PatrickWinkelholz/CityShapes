@@ -3,11 +3,18 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
+public struct Shape
+{
+    public Vector2 Center;
+    public List<Vector2> Points;
+}
+
+[System.Serializable]
 public struct DistrictData
 {
     public string Name;
     public string Region;
-    public List<Vector2> Shape;
+    public Shape Shape;
 }
 
 [System.Serializable]

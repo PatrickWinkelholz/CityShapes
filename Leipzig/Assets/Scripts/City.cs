@@ -12,6 +12,7 @@ public class City : MonoBehaviour
 
     public void Initialize(CityData cityData)
     {
+        gameObject.name = cityData.Name;
         for ( int i = 0; i < cityData.Districts.Count; i++ )
         {
             DistrictData districtData = cityData.Districts[i];

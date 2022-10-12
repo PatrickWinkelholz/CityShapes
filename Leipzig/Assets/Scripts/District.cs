@@ -23,7 +23,8 @@ public class District : MonoBehaviour
     public void Initialize(DistrictData districtData)
     {
         DistrictName = districtData.Name;
-        Vector2[] shapeArray = districtData.Shape.ToArray();
+        gameObject.name = DistrictName;
+        Vector2[] shapeArray = districtData.Shape.Points.ToArray();
         _Collider.points = shapeArray;
         _MeshFilter.mesh = _Collider.CreateMesh(false, false);
 
@@ -33,13 +34,11 @@ public class District : MonoBehaviour
 
         //outline + calculate center
         List<Vector3> linePositions = new List<Vector3>();
-        CenterPoint = Vector2.zero;
-        foreach (Vector2 point in districtData.Shape)
+        foreach (Vector2 point in districtData.Shape.Points)
         {
             linePositions.Add(point);
-            CenterPoint += point;
         }
-        CenterPoint /= districtData.Shape.Count;
+        CenterPoint = districtData.Shape.Center;
         _LineRenderer.positionCount = linePositions.Count;
         _LineRenderer.SetPositions(linePositions.ToArray());
     }

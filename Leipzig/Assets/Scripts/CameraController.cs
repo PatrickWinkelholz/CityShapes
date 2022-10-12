@@ -7,7 +7,7 @@ public class CameraController : MonoBehaviour
     public delegate void FloatDelegate(float value);
     public event FloatDelegate ZoomChanged;
 
-    public bool Blocked = false;
+    public bool Blocked = true;
 
     [SerializeField] private Camera _Camera = null;
     [SerializeField] private float _ZoomSpeed = 10.0f;

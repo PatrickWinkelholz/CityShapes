@@ -4,18 +4,25 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Xml;
 
-struct RelationData
+public struct RelationData
 {
     public string Name;
     public Vector2 Center;
     public List<List<Vector2>> Ways;
 }
 
-struct RelationReference
+public struct RelationReference
 {
     public long CenterId;
     public long NameId;
     public List<long> WayIds;
+}
+
+public struct NominatimResult
+{
+    public string Name;
+    public string DisplayName;
+    public string BoundingBox;
 }
 
 //struct Way
@@ -36,49 +43,54 @@ public class OsmDataProcessor
     public const float SqrMagnitudeDelta = 0.00000000001f;
     public const float SqrMagnitudeLargestWayGap = 0.0001f;
 
-    private List<Vector2> _CityShape = new List<Vector2>();
-    private Vector2 _CityCenter = new Vector2();
-    private string _CityName = default;
-    private string _CityBoundingBoxString = "";
-    private bool _Verified = false;
-
-    public IEnumerator GenerateCityData(string query, System.Action<CityData> callback)
+    public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<CityData> callback)
     {
-        yield return VerifyCity(query);
-
-        if (_Verified)
+        Shape cityShape = default;
+        yield return ObtainCityShape(cityName, boundingBox, (shape)=> { cityShape = shape; });
+        
+        string[] bboxSplit = boundingBox.Split(',');
+        string[] cityNameSplit = cityName.Split(',');
+        string overpassQuery = "area[\"name\"~\"^" + cityNameSplit[0] + "$\",i](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][admin_level=10](area.b);(._; >;);out qt;";
+        yield return ObtainOverpassData(overpassQuery, overpassData =>
         {
-            yield return ObtainCityShape(_CityName);
-
-            string[] bbox = _CityBoundingBoxString.Split(',');
-            string overpassQuery = "area[\"name\"~\"^" + _CityName + "$\",i](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.b;rel[boundary=administrative][admin_level=10](area.b);(._; >;);out qt;";
-            System.Action<string> overpassCallback = overpassData =>
+            List<RelationData> relations = ProcessOverpassData(overpassData);
+            if (relations == null)
             {
-                List<RelationData> relations = ProcessOverpassData(overpassData);
-                Debug.Log("Generated " + relations.Count + " districts");
+                Debug.LogWarning("failed to generate districts!");
+                return;
+            }
+            Debug.Log("Generated " + relations.Count + " districts");
 
-                CityData cityData = new CityData();
-                cityData.Name = _CityName;
-                cityData.Center = _CityCenter * ShapeScaler;
-                cityData.Districts = new List<DistrictData>();
+            CityData cityData = new CityData();
+            cityData.Name = cityName;
+            cityData.Districts = new List<DistrictData>();
 
-                foreach (RelationData relation in relations)
-                {
-                    DistrictData districtData = new DistrictData();
-                    districtData.Name = relation.Name;
-                    districtData.Shape = GenerateShape(relation);
-                    cityData.Districts.Add(districtData);
-                }
+            Vector2 cityCenter = Vector2.zero;
+            foreach (RelationData relation in relations)
+            {
+                DistrictData districtData = new DistrictData();
+                districtData.Name = relation.Name;
+                districtData.Shape = GenerateShape(relation);
+                cityData.Districts.Add(districtData);
+                cityCenter += districtData.Shape.Center;
+            }
 
-                callback.Invoke(cityData);
-            };
-            yield return ObtainOverpassData(overpassQuery, overpassCallback);
-        }
+            if (cityShape.Center != default)
+            {
+                cityData.Center = cityShape.Center;
+            }
+            else
+            {
+                cityData.Center = cityCenter / cityData.Districts.Count;
+            }
+
+            callback.Invoke(cityData);
+        });
     }
 
-    private IEnumerator VerifyCity(string cityName)
+    public IEnumerator SearchCities(string query, System.Action<List<NominatimResult>> callback)
     {
-        UnityWebRequest nominatimRequest = UnityWebRequest.Get("https://nominatim.openstreetmap.org/search?q=" + cityName + "&format=xml&addressdetails=1&extratags=1");
+        UnityWebRequest nominatimRequest = UnityWebRequest.Get("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1");
         yield return nominatimRequest.SendWebRequest();
         if (!nominatimRequest.isDone)
         {
@@ -103,6 +115,7 @@ public class OsmDataProcessor
             yield break;
         }
 
+        List<NominatimResult> cities = new List<NominatimResult>();
         foreach (XmlNode searchResult in searchResults.ChildNodes)
         {
             XmlAttribute addressRank = searchResult.Attributes["address_rank"];
@@ -115,17 +128,25 @@ public class OsmDataProcessor
                     Debug.LogWarning("displayName was null!");
                     continue;
                 }
-                string[] nameSplit = displayName.Value.Split(',');
-                if (nameSplit.Length < 1)
+                string[] displayNameSplit = displayName.Value.Split(',');
+                if (displayNameSplit.Length < 1)
                 {
                     Debug.LogWarning("nameSplit was empty!");
                     continue;
                 }
 
-                //if (nameSplit[0].ToLower() != cityName.ToLower())
-                //{
-                //    continue;
-                //}
+                string countryCode = "";
+                if (displayNameSplit.Length > 1)
+                {
+                    countryCode = ", " + displayNameSplit[displayNameSplit.Length - 1];
+                }
+                foreach (XmlNode childNode in searchResult.ChildNodes)
+                {
+                    if (childNode.Name == "country_code")
+                    {
+                        countryCode = ", " + childNode.InnerText;
+                    }
+                }
 
                 XmlAttribute boundingBox = searchResult.Attributes["boundingbox"];
                 if (boundingBox == null)
@@ -134,32 +155,35 @@ public class OsmDataProcessor
                     continue;
                 }
 
-                _Verified = true;
-                _CityBoundingBoxString = boundingBox.Value;
-                _CityName = nameSplit[0];
-                yield break;
+                NominatimResult city = new NominatimResult();
+                city.Name = displayNameSplit[0];
+                city.DisplayName = displayNameSplit[0] + countryCode;
+                city.BoundingBox = boundingBox.Value;
+                cities.Add(city);
             }
         }
+        callback.Invoke(cities);
     }
 
-    private IEnumerator ObtainCityShape(string cityName)
+    private IEnumerator ObtainCityShape(string cityName, string boundingBox, System.Action<Shape> callback)
     {
-        string[] bbox = _CityBoundingBoxString.Split(',');
-        string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityName + "$\",i][\"admin_level\"~\"4|6\"](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ");(._; >;);out qt;";
-        System.Action<string> callback = overpassData => 
+        string[] bboxSplit = boundingBox.Split(',');
+        string[] cityNameSplit = cityName.Split(',');
+        string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
+        yield return ObtainOverpassData(overpassQuery, overpassData =>
         {
             List<RelationData> relations = ProcessOverpassData(overpassData);
             if (relations != null && relations.Count > 0)
             {
-                _CityShape = GenerateShape(relations[0]);
-                _CityCenter = relations[0].Center;
+                Shape cityShape = GenerateShape(relations[0]);
+                callback.Invoke(cityShape);
             }
             else
             {
-                Debug.LogError("can't generate CityShape, recieved unexpected amount of relations!");
+                Debug.LogWarning("no city relation found!");
+                return;
             }
-        };
-        yield return ObtainOverpassData(overpassQuery, callback);
+        });
     }
 
     private IEnumerator ObtainOverpassData( string overpassQuery, System.Action<string> callback)
@@ -290,7 +314,10 @@ public class OsmDataProcessor
                         }
                     }
                 }
-                relations.Add(relationReference);
+                if (relationReference.WayIds.Count > 0)
+                {
+                    relations.Add(relationReference);
+                }
             }
         }
 
@@ -301,10 +328,6 @@ public class OsmDataProcessor
             if (nodes.TryGetValue(relationReference.CenterId, out Vector2 center))
             {
                 relationData.Center = center;
-            }
-            else
-            {
-                //TODO: calculate center
             }
             if (names.TryGetValue(relationReference.NameId, out string name))
             {
@@ -325,9 +348,14 @@ public class OsmDataProcessor
         return relationDataList;
     }
 
-    private List<Vector2> GenerateShape(RelationData relation)
+    private Shape GenerateShape(RelationData relation)
     {
-        List<Vector2> shape = new List<Vector2>();
+        if (relation.Ways == null || relation.Ways.Count == 0)
+        {
+            return default;
+        }
+
+        List<Vector2> points = new List<Vector2>();
         List<Vector2> closestWay = relation.Ways[0];
         bool reverse = false;
         Vector2 lastAddedPoint = Vector2.zero;
@@ -339,9 +367,9 @@ public class OsmDataProcessor
                 Vector2 point = closestWay[reverse ? closestWay.Count - 1 - i : i];
                 Vector2 shapePoint = point * ShapeScaler;
 
-                if (shape.Count == 0 || (shapePoint - shape[shape.Count - 1]).sqrMagnitude > SqrMagnitudeDelta)
+                if (points.Count == 0 || (shapePoint - points[points.Count - 1]).sqrMagnitude > SqrMagnitudeDelta)
                 {
-                    shape.Add(shapePoint);
+                    points.Add(shapePoint);
                     lastAddedPoint = point;
                 }
             }
@@ -350,7 +378,27 @@ public class OsmDataProcessor
         }
         while (closestWay != null);
 
+        Shape shape = new Shape();
+        shape.Points = points;
+        if (relation.Center == default)
+        {
+            shape.Center = CalculateCenter(points);
+        }
+        else
+        {
+            shape.Center = relation.Center * ShapeScaler;
+        }
         return shape;
+    }
+
+    private Vector2 CalculateCenter(List<Vector2> points)
+    {
+        Vector2 center = new Vector2();
+        foreach( Vector2 point in points)
+        {
+            center += point;
+        }
+        return center / points.Count;
     }
 
     private List<Vector2> FindClosestWay(RelationData relation, Vector2 referencePoint, out bool reverse)
