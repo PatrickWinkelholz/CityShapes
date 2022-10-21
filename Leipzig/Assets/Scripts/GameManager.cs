@@ -6,6 +6,7 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
     public int Score;
+    public float Timer { get; private set; }
     public bool GameOver { get; private set; }
     public event System.Action GameOverEvent;
     public event System.Action GameRestartingEvent;
@@ -25,11 +26,20 @@ public class GameManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        GameOver = true;
     }
 
     private void Start()
     {
         //RestartGame();
+    }
+
+    private void Update()
+    {
+        if (!GameOver)
+        {
+            Timer += Time.deltaTime;
+        }
     }
 
     public void DistrictPressed(District district)
@@ -40,11 +50,12 @@ public class GameManager : MonoBehaviour
     public void RestartGame()
     {
         Score = 0;
+        Timer = 0.0f;
         GameOver = false;        
         GameRestartingEvent?.Invoke();
     }
 
-    public IEnumerator ChangeCity(string cityName, string boundingBox)
+    public IEnumerator ChangeCity(string cityName, string boundingBox, System.Action<bool> cityChangedCallback)
     {
         System.Action<CityData> callback = (cityData) =>
         {
@@ -53,7 +64,8 @@ public class GameManager : MonoBehaviour
                 _CityCollection.Cities.Add(cityName, cityData);
             }
 
-            if (cityData.Districts.Count > 0)
+            bool cityValid = cityData.Districts != null && cityData.Districts.Count > 0;
+            if (cityValid)
             {
                 if (_City)
                 {
@@ -63,6 +75,7 @@ public class GameManager : MonoBehaviour
                 _City.Initialize(cityData);
                 RestartGame();
             }
+            cityChangedCallback?.Invoke(cityValid);
         };
         if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
         {
@@ -77,5 +90,6 @@ public class GameManager : MonoBehaviour
     public void EndGame()
     {
         GameOverEvent?.Invoke();
+        GameOver = true;
     }
 }

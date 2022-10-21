@@ -7,6 +7,7 @@ using System.Xml;
 public struct RelationData
 {
     public string Name;
+    public int AdminLevel;
     public Vector2 Center;
     public List<List<Vector2>> Ways;
 }
@@ -14,6 +15,7 @@ public struct RelationData
 public struct RelationReference
 {
     public long CenterId;
+    public int AdminLevel;
     public long NameId;
     public List<long> WayIds;
 }
@@ -39,6 +41,8 @@ public struct NominatimResult
 
 public class OsmDataProcessor
 {
+    public System.Action<string> StatusChangedEvent = default;
+
     public const float ShapeScaler = 100.0f;
     public const float SqrMagnitudeDelta = 0.00000000001f;
     public const float SqrMagnitudeLargestWayGap = 0.0001f;
@@ -46,27 +50,64 @@ public class OsmDataProcessor
     public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<CityData> callback)
     {
         Shape cityShape = default;
-        yield return ObtainCityShape(cityName, boundingBox, (shape)=> { cityShape = shape; });
-        
+        int cityAdminLevel = 0;
+        yield return ObtainCityShape(cityName, boundingBox, (shape, adminLevel) =>
+        {
+            cityShape = shape;
+            cityAdminLevel = adminLevel;
+        });
+
+        StatusChangedEvent?.Invoke("Requesting district boundary data...");
+
         string[] bboxSplit = boundingBox.Split(',');
         string[] cityNameSplit = cityName.Split(',');
-        string overpassQuery = "area[\"name\"~\"^" + cityNameSplit[0] + "$\",i](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][admin_level=10](area.b);(._; >;);out qt;";
+        string areaFilterString = "";
+        if (cityAdminLevel > 0)
+        {
+            areaFilterString = "[admin_level=" + cityAdminLevel + "]";
+        }
+        string overpassQuery = "area[\"name\"~\"^" + cityNameSplit[0] + "$\",i]" + areaFilterString + "(" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
+    
         yield return ObtainOverpassData(overpassQuery, overpassData =>
         {
+            StatusChangedEvent?.Invoke("Processing district boundary data...");
+
             List<RelationData> relations = ProcessOverpassData(overpassData);
-            if (relations == null)
+            if (relations == null || relations.Count == 0)
             {
                 Debug.LogWarning("failed to generate districts!");
+                callback?.Invoke(default);
                 return;
             }
-            Debug.Log("Generated " + relations.Count + " districts");
+            Debug.Log("Generated " + relations.Count + " relations");
+
+            Dictionary<int, List<RelationData>> relationsByAdminLevel = new Dictionary<int, List<RelationData>>();
+            int adminLevelWithMostRelations = relations[0].AdminLevel;
+            foreach (RelationData relation in relations)
+            {
+                int adminLevel = relation.AdminLevel;
+                if (relationsByAdminLevel.ContainsKey(adminLevel))
+                {
+                    relationsByAdminLevel[adminLevel].Add(relation);
+                }
+                else
+                {
+                    relationsByAdminLevel.Add(adminLevel, new List<RelationData>(){ relation });
+                }
+                if (relationsByAdminLevel[adminLevel].Count > relationsByAdminLevel[adminLevelWithMostRelations].Count)
+                {
+                    adminLevelWithMostRelations = adminLevel;
+                }
+            }
 
             CityData cityData = new CityData();
             cityData.Name = cityName;
             cityData.Districts = new List<DistrictData>();
 
+            StatusChangedEvent?.Invoke("Generating district shapes...");
+
             Vector2 cityCenter = Vector2.zero;
-            foreach (RelationData relation in relations)
+            foreach (RelationData relation in relationsByAdminLevel[adminLevelWithMostRelations])
             {
                 DistrictData districtData = new DistrictData();
                 districtData.Name = relation.Name;
@@ -90,6 +131,8 @@ public class OsmDataProcessor
 
     public IEnumerator SearchCities(string query, System.Action<List<NominatimResult>> callback)
     {
+        StatusChangedEvent?.Invoke("Requesting search results...");
+
         UnityWebRequest nominatimRequest = UnityWebRequest.Get("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1");
         yield return nominatimRequest.SendWebRequest();
         if (!nominatimRequest.isDone)
@@ -103,6 +146,8 @@ public class OsmDataProcessor
             Debug.LogError("Network Error!");
             yield break;
         }
+
+        StatusChangedEvent?.Invoke("Processing search results...");
 
         string nominatimResult = nominatimRequest.downloadHandler.text;
         XmlDocument nominatimDoc = new XmlDocument();
@@ -138,13 +183,13 @@ public class OsmDataProcessor
                 string countryCode = "";
                 if (displayNameSplit.Length > 1)
                 {
-                    countryCode = ", " + displayNameSplit[displayNameSplit.Length - 1];
+                    countryCode = ", " + displayNameSplit[displayNameSplit.Length - 1].ToUpper();
                 }
                 foreach (XmlNode childNode in searchResult.ChildNodes)
                 {
                     if (childNode.Name == "country_code")
                     {
-                        countryCode = ", " + childNode.InnerText;
+                        countryCode = ", " + childNode.InnerText.ToUpper();
                     }
                 }
 
@@ -165,18 +210,30 @@ public class OsmDataProcessor
         callback.Invoke(cities);
     }
 
-    private IEnumerator ObtainCityShape(string cityName, string boundingBox, System.Action<Shape> callback)
+    private IEnumerator ObtainCityShape(string cityName, string boundingBox, System.Action<Shape, int> callback)
     {
+        StatusChangedEvent?.Invoke("Requesting city data...");
+
         string[] bboxSplit = boundingBox.Split(',');
         string[] cityNameSplit = cityName.Split(',');
-        string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
+        string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6|8\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
         yield return ObtainOverpassData(overpassQuery, overpassData =>
         {
+            StatusChangedEvent?.Invoke("Processing city data...");
             List<RelationData> relations = ProcessOverpassData(overpassData);
             if (relations != null && relations.Count > 0)
             {
-                Shape cityShape = GenerateShape(relations[0]);
-                callback.Invoke(cityShape);
+                int largestAdminLevelIndex = 0;
+                for (int i = 0; i < relations.Count; i++)
+                {
+                    if (relations[i].AdminLevel > relations[largestAdminLevelIndex].AdminLevel)
+                    {
+                        largestAdminLevelIndex = i;
+                    }
+                }
+                StatusChangedEvent?.Invoke("Generating city shape...");
+                Shape cityShape = GenerateShape(relations[largestAdminLevelIndex]);
+                callback.Invoke(cityShape, relations[largestAdminLevelIndex].AdminLevel);
             }
             else
             {
@@ -297,19 +354,27 @@ public class OsmDataProcessor
                             relationReference.WayIds.Add(parsedId);
                         }
                     }
-                    else if (relationReference.NameId == 0)
+                    else
                     {
-                        //save label name as fallback name in case there is no admin_center/label node available
                         XmlAttribute key = relationChild.Attributes["k"];
-                        if (key != null && key.Value == "name")
+                        XmlAttribute value = relationChild.Attributes["v"];
+                        if (key != null && key.Value == "name"
+                            && relationReference.NameId == 0)
                         {
+                            //save label name as fallback name in case there is no admin_center/label node available
                             XmlAttribute relationId = child.Attributes["id"];
-                            XmlAttribute value = relationChild.Attributes["v"];
                             if (value != null && relationId != null
                                 && long.TryParse(relationId.Value, out long parsedRelationId))
                             {
                                 names.Add(parsedRelationId, value.Value);
                                 relationReference.NameId = parsedRelationId;
+                            }
+                        }
+                        if (key != null && key.Value == "admin_level")
+                        {
+                            if (value != null && int.TryParse(value.Value, out int parsedAdminLevel))
+                            {
+                                relationReference.AdminLevel = parsedAdminLevel;
                             }
                         }
                     }
@@ -325,6 +390,7 @@ public class OsmDataProcessor
         foreach (RelationReference relationReference in relations)
         {
             RelationData relationData = new RelationData();
+            relationData.AdminLevel = relationReference.AdminLevel;
             if (nodes.TryGetValue(relationReference.CenterId, out Vector2 center))
             {
                 relationData.Center = center;
