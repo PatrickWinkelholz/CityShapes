@@ -6255,7 +6255,7 @@ MonoBehaviour:
   m_VerticalScrollbar: {fileID: 0}
   m_VerticalScrollbarEventHandler: {fileID: 0}
   m_ScrollSensitivity: 1
-  m_ContentType: 9
+  m_ContentType: 7
   m_InputType: 2
   m_AsteriskChar: 42
   m_KeyboardType: 0
@@ -6668,8 +6668,8 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4280553631
-  m_fontColor: {r: 0.6226415, g: 0.064613745, b: 0.13934946, a: 1}
+    rgba: 4282682089
+  m_fontColor: {r: 0.9150943, g: 0.5395725, b: 0.2676219, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
