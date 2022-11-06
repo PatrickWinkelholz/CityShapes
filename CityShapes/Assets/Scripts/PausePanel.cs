@@ -108,7 +108,7 @@ public class PausePanel : MonoBehaviour
     private void UpdateScoreDisplay()
     {
         _ScoreDisplay.text = GameManager.Instance.Score.ToString();
-        _ScoreTimeDisplay.text = "(" + GameManager.Instance.Timer.ToString("0.00") + ")";
+        _ScoreTimeDisplay.text = "(" + Utils.FormatTime(GameManager.Instance.Timer) + ")";
         if (_HighScore == 0)
         {
             _HighScoreDisplay.text = "-";
@@ -117,7 +117,7 @@ public class PausePanel : MonoBehaviour
         else
         {
             _HighScoreDisplay.text = _HighScore.ToString();
-            _HighScoreTimeDisplay.text = "(" + _HighScoreTime.ToString("0.00") + ")";
+            _HighScoreTimeDisplay.text = "(" + Utils.FormatTime(_HighScoreTime) + ")";
         }
     }
 
@@ -125,7 +125,7 @@ public class PausePanel : MonoBehaviour
     {
         WWWForm form = new WWWForm();
         form.AddField("submitScore", GameManager.Instance.Score);
-        form.AddField("time", GameManager.Instance.Timer.ToString("0.00"));
+        form.AddField("time", GameManager.Instance.Timer.ToString());
         form.AddField("cityName", GameManager.Instance.City.gameObject.name);
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
@@ -278,7 +278,7 @@ public class PausePanel : MonoBehaviour
     public void TrySetNewHighscore()
     {
         if (GameManager.Instance.Score > _HighScore ||
-            (GameManager.Instance.Score == _HighScore && GameManager.Instance.Timer > _HighScoreTime))
+            (GameManager.Instance.Score == _HighScore && GameManager.Instance.Timer < _HighScoreTime))
         {
             _HighScore = GameManager.Instance.Score;
             _HighScoreTime = GameManager.Instance.Timer;
@@ -399,7 +399,7 @@ public class PausePanel : MonoBehaviour
                     TMPro.TextMeshProUGUI[] textElements = entry.GetComponentsInChildren<TMPro.TextMeshProUGUI>();
                     textElements[0].text = values[0];
                     textElements[1].text = values[1];
-                    textElements[2].text = "(" + values[2] + ")";
+                    textElements[2].text = "(" + Utils.FormatTime(values[2]) + ")";
 
                     if (values[0] == _UserNameInputField.text)
                     {
@@ -418,7 +418,7 @@ public class PausePanel : MonoBehaviour
     private void Update()
     {
         transform.position = Vector3.Lerp(transform.position, _TargetPosition, Time.deltaTime * _lerpSpeed);
-        _TimeIndicator.text = GameManager.Instance.Timer.ToString("0.00");
+        _TimeIndicator.text = Utils.FormatTime(GameManager.Instance.Timer);
         if (_Paused && !GameManager.Instance.GameOver)
         {
             UpdateScoreDisplay();
