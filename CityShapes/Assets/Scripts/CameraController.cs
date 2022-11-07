@@ -41,17 +41,7 @@ public class CameraController : MonoBehaviour
 
         if (!Blocked)
         {
-#if UNITY_EDITOR
-            if (Input.GetMouseButton(0))
-            {
-                MoveCamera(_MousePosDelta);
-            }
-            float zoom = Input.GetAxis("Mouse ScrollWheel");
-            if (zoom != 0f)
-            {
-                Zoom(zoom * 100f);
-            }
-#else
+#if UNITY_ANDROID && !UNITY_EDITOR
             if (Input.touchCount == 1)
             {
                 MoveCamera(Input.touches[0].deltaPosition);
@@ -69,6 +59,16 @@ public class CameraController : MonoBehaviour
 
                 float difference = currentMagnitude - prevMagnitude;
                 Zoom(difference);
+            }
+#else
+            if (Input.GetMouseButton(0))
+            {
+                MoveCamera(_MousePosDelta);
+            }
+            float zoom = Input.GetAxis("Mouse ScrollWheel");
+            if (zoom != 0f)
+            {
+                Zoom(zoom * 100f);
             }
 #endif
         }

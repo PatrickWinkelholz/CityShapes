@@ -50,13 +50,13 @@ public class District : MonoBehaviour
             return;
         }
 
-#if UNITY_EDITOR
-        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(0)) 
         {
             return;
         }
 #else
-        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(0)) 
+        if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
             return;
         }
@@ -72,18 +72,18 @@ public class District : MonoBehaviour
             return;
         }
 
-#if UNITY_EDITOR
+#if UNITY_ANDROID && !UNITY_EDITOR
+        if (Input.touchCount != 1 || UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(0)) 
+        {
+            return;
+        }
+        _ClickedPosition = Input.GetTouch(0).position; 
+#else
         if (UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
         {
             return;
         }
         _ClickedPosition = Input.mousePosition;
-#else
-        if (Input.touchCount != 1 || UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject(0)) 
-        {
-            return;
-        }
-        _ClickedPosition = Input.GetTouch(0).position;
 #endif
         _ClickStarted = true;
         _MeshRenderer.material.color = Color.white;        
@@ -93,13 +93,13 @@ public class District : MonoBehaviour
     {
         if (_ClickStarted && !Locked)
         {
-#if UNITY_EDITOR
-            if (((Vector2)Input.mousePosition - _ClickedPosition).sqrMagnitude > 30f)
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (Input.touchCount != 1 || (Input.touches[0].position - _ClickedPosition).sqrMagnitude > 30f)
             {
                 CancelClick();
-            }
+            }         
 #else
-            if (Input.touchCount != 1 || (Input.touches[0].position - _ClickedPosition).sqrMagnitude > 30f)
+            if (((Vector2)Input.mousePosition - _ClickedPosition).sqrMagnitude > 30f)
             {
                 CancelClick();
             }
