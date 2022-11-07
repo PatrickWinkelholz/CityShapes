@@ -4,12 +4,12 @@ using UnityEngine;
 
 public class DistrictGameMode : GameMode
 {
-    [SerializeField] private UnityEngine.UI.InputField _NameInputField = default;
-    [SerializeField] private UnityEngine.UI.InputField _RegionInputField = default;
+    //[SerializeField] private UnityEngine.UI.InputField _NameInputField = default;
+    //[SerializeField] private UnityEngine.UI.InputField _RegionInputField = default;
 
     private District _CurrentDistrict;
 
-    private bool EnterDistrictNamesMode = false;
+    //private bool EnterDistrictNamesMode = false;
     private City _City => GameManager.Instance.City;
 
     public override void DistrictPressed(District district)

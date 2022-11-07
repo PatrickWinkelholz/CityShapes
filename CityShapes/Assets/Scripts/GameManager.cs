@@ -55,17 +55,22 @@ public class GameManager : MonoBehaviour
         GameRestartingEvent?.Invoke();
     }
 
-    public IEnumerator ChangeCity(string cityName, string boundingBox, System.Action<bool> cityChangedCallback)
+    public IEnumerator ChangeCity(string cityName, string boundingBox, System.Action<string> cityChangedCallback)
     {
-        System.Action<CityData> callback = (cityData) =>
+        System.Action<string, CityData> callback = (result, cityData) =>
         {
+            if (result != "success")
+            {
+                cityChangedCallback?.Invoke(result);
+                return;
+            }
+
             if (!_CityCollection.Cities.ContainsKey(cityName))
             {
                 _CityCollection.Cities.Add(cityName, cityData);
             }
 
-            bool cityValid = cityData.Districts != null && cityData.Districts.Count > 0;
-            if (cityValid)
+            if (cityData.Districts != null && cityData.Districts.Count > 0)
             {
                 if (_City)
                 {
@@ -74,12 +79,17 @@ public class GameManager : MonoBehaviour
                 _City = Instantiate(_CityPrefab);
                 _City.Initialize(cityData);
                 RestartGame();
+                cityChangedCallback?.Invoke("success");
             }
-            cityChangedCallback?.Invoke(cityValid);
+            else
+            {
+                cityChangedCallback?.Invoke("Can't generate cityData for " + cityName);
+            }
         };
+
         if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
         {
-            callback.Invoke(outCityData);
+            callback.Invoke("success", outCityData);
         }
         else
         {

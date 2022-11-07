@@ -5,7 +5,7 @@ using UnityEngine;
 public class LandmarkGameMode : GameMode
 {
     [SerializeField] private LandmarkCollection _Landmarks = null;
-    [SerializeField] private LandmarkCollection _NewLandmarks = null;
+    //[SerializeField] private LandmarkCollection _NewLandmarks = null;
     public GameObject Marker = null;
     public GameObject NewMarker = null;
 

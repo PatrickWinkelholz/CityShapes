@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.Networking;
 using System.Xml;
 
 public struct RelationData
@@ -47,7 +46,9 @@ public class OsmDataProcessor
     public const float SqrMagnitudeDelta = 0.00000000001f;
     public const float SqrMagnitudeLargestWayGap = 0.0001f;
 
-    public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<CityData> callback)
+    static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
+
+    public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<string, CityData> callback)
     {
         Shape cityShape = default;
         int cityAdminLevel = 0;
@@ -68,15 +69,20 @@ public class OsmDataProcessor
         }
         string overpassQuery = "area[\"name\"~\"^" + cityNameSplit[0] + "$\",i]" + areaFilterString + "(" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
     
-        yield return ObtainOverpassData(overpassQuery, overpassData =>
+        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
+            if (result[0] != '<')
+            {
+                callback?.Invoke(result, default);
+                return;
+            }
+
             StatusChangedEvent?.Invoke("Processing district boundary data...");
 
-            List<RelationData> relations = ProcessOverpassData(overpassData);
+            List<RelationData> relations = ProcessOverpassData(result);
             if (relations == null || relations.Count == 0)
             {
-                Debug.LogWarning("failed to generate districts!");
-                callback?.Invoke(default);
+                callback?.Invoke("failed to generate districts!", default);
                 return;
             }
             Debug.Log("Generated " + relations.Count + " relations");
@@ -125,89 +131,83 @@ public class OsmDataProcessor
                 cityData.Center = cityCenter / cityData.Districts.Count;
             }
 
-            callback.Invoke(cityData);
+            callback.Invoke("success", cityData);
         });
     }
 
-    public IEnumerator SearchCities(string query, System.Action<List<NominatimResult>> callback)
+    public IEnumerator SearchCities(string query, System.Action<string, List<NominatimResult>> callback)
     {
         StatusChangedEvent?.Invoke("Requesting search results...");
 
-        UnityWebRequest nominatimRequest = UnityWebRequest.Get("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1");
-        yield return nominatimRequest.SendWebRequest();
-        if (!nominatimRequest.isDone)
+        yield return Utils.SendWebRequest("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1", result => 
         {
-            Debug.LogError("Not Done!");
-            yield break;
-        }
-
-        if (nominatimRequest.isNetworkError)
-        {
-            Debug.LogError("Network Error!");
-            yield break;
-        }
-
-        StatusChangedEvent?.Invoke("Processing search results...");
-
-        string nominatimResult = nominatimRequest.downloadHandler.text;
-        XmlDocument nominatimDoc = new XmlDocument();
-        nominatimDoc.LoadXml(nominatimResult);
-
-        XmlNode searchResults = nominatimDoc["searchresults"];
-        if (searchResults == null)
-        {
-            Debug.LogError("search result was null!");
-            yield break;
-        }
-
-        List<NominatimResult> cities = new List<NominatimResult>();
-        foreach (XmlNode searchResult in searchResults.ChildNodes)
-        {
-            XmlAttribute addressRank = searchResult.Attributes["address_rank"];
-            if (addressRank != null && int.TryParse(addressRank.Value, out int rank)
-                && rank >= 13 && rank <= 16)
+            if (result.Length == 0 || result[0] != '<')
             {
-                XmlAttribute displayName = searchResult.Attributes["display_name"];
-                if (displayName == null)
-                {
-                    Debug.LogWarning("displayName was null!");
-                    continue;
-                }
-                string[] displayNameSplit = displayName.Value.Split(',');
-                if (displayNameSplit.Length < 1)
-                {
-                    Debug.LogWarning("nameSplit was empty!");
-                    continue;
-                }
-
-                string countryCode = "";
-                if (displayNameSplit.Length > 1)
-                {
-                    countryCode = ", " + displayNameSplit[displayNameSplit.Length - 1].ToUpper();
-                }
-                foreach (XmlNode childNode in searchResult.ChildNodes)
-                {
-                    if (childNode.Name == "country_code")
-                    {
-                        countryCode = ", " + childNode.InnerText.ToUpper();
-                    }
-                }
-
-                XmlAttribute boundingBox = searchResult.Attributes["boundingbox"];
-                if (boundingBox == null)
-                {
-                    Debug.LogWarning("bounding box was null!");
-                    continue;
-                }
-
-                NominatimResult city = new NominatimResult();
-                city.Name = displayNameSplit[0];
-                city.DisplayName = displayNameSplit[0] + countryCode;
-                city.BoundingBox = boundingBox.Value;
-                cities.Add(city);
+                callback?.Invoke(result, default);
+                return;
             }
-        }
-        callback.Invoke(cities);
+
+            StatusChangedEvent?.Invoke("Processing search results...");
+
+            XmlDocument nominatimDoc = new XmlDocument();
+            nominatimDoc.LoadXml(result);
+
+            XmlNode searchResults = nominatimDoc["searchresults"];
+            if (searchResults == null)
+            {
+                callback?.Invoke("searchresults not found!", default);
+                return;
+            }
+
+            List<NominatimResult> cities = new List<NominatimResult>();
+            foreach (XmlNode searchResult in searchResults.ChildNodes)
+            {
+                XmlAttribute addressRank = searchResult.Attributes["address_rank"];
+                if (addressRank != null && int.TryParse(addressRank.Value, out int rank)
+                    && rank >= 13 && rank <= 16)
+                {
+                    XmlAttribute displayName = searchResult.Attributes["display_name"];
+                    if (displayName == null)
+                    {
+                        Debug.LogWarning("displayName was null!");
+                        continue;
+                    }
+                    string[] displayNameSplit = displayName.Value.Split(',');
+                    if (displayNameSplit.Length < 1)
+                    {
+                        Debug.LogWarning("nameSplit was empty!");
+                        continue;
+                    }
+
+                    string countryCode = "";
+                    if (displayNameSplit.Length > 1)
+                    {
+                        countryCode = ", " + displayNameSplit[displayNameSplit.Length - 1].ToUpper();
+                    }
+                    foreach (XmlNode childNode in searchResult.ChildNodes)
+                    {
+                        if (childNode.Name == "country_code")
+                        {
+                            countryCode = ", " + childNode.InnerText.ToUpper();
+                        }
+                    }
+
+                    XmlAttribute boundingBox = searchResult.Attributes["boundingbox"];
+                    if (boundingBox == null)
+                    {
+                        Debug.LogWarning("bounding box was null!");
+                        continue;
+                    }
+
+                    NominatimResult city = new NominatimResult();
+                    city.Name = displayNameSplit[0];
+                    city.DisplayName = displayNameSplit[0] + countryCode;
+                    city.BoundingBox = boundingBox.Value;
+                    cities.Add(city);
+                }
+            }
+            callback.Invoke("success", cities);
+        });
     }
 
     private IEnumerator ObtainCityShape(string cityName, string boundingBox, System.Action<Shape, int> callback)
@@ -217,10 +217,16 @@ public class OsmDataProcessor
         string[] bboxSplit = boundingBox.Split(',');
         string[] cityNameSplit = cityName.Split(',');
         string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6|8\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
-        yield return ObtainOverpassData(overpassQuery, overpassData =>
+        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
+            if (result[0] != '<')
+            {
+                Debug.LogWarning(result);
+                return;
+            }
+
             StatusChangedEvent?.Invoke("Processing city data...");
-            List<RelationData> relations = ProcessOverpassData(overpassData);
+            List<RelationData> relations = ProcessOverpassData(result);
             if (relations != null && relations.Count > 0)
             {
                 int largestAdminLevelIndex = 0;
@@ -241,26 +247,6 @@ public class OsmDataProcessor
                 return;
             }
         });
-    }
-
-    private IEnumerator ObtainOverpassData( string overpassQuery, System.Action<string> callback)
-    {        
-        UnityWebRequest overpassRequest = UnityWebRequest.Get("https://overpass-api.de/api/interpreter?data=" + overpassQuery);
-        yield return overpassRequest.SendWebRequest();
-
-        if (!overpassRequest.isDone)
-        {
-            Debug.LogError("Not Done!");
-            yield break;
-        }
-
-        if (overpassRequest.isNetworkError)
-        {
-            Debug.LogError("Network Error!");
-            yield break;
-        }
-
-        callback.Invoke(overpassRequest.downloadHandler.text);
     }
 
     private List<RelationData> ProcessOverpassData(string overpassResult)

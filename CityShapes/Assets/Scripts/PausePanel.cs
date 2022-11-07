@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.Networking;
 
 public class PausePanel : MonoBehaviour
 {
@@ -129,30 +128,18 @@ public class PausePanel : MonoBehaviour
         form.AddField("cityName", GameManager.Instance.City.gameObject.name);
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
-        UnityWebRequest webRequest = UnityWebRequest.Post("https://patrickwinkelholz.com/leaderboard.php", form);
 
-        yield return webRequest.SendWebRequest();
-
-        if (!webRequest.isDone)
+        yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
         {
-            Debug.LogError("Not Done!");
-            yield break;
-        }
-
-        if (webRequest.isNetworkError)
-        {
-            _ErrorText.text = "Network Error!";
-            yield break;
-        }
-
-        if (webRequest.downloadHandler.text == "success")
-        {
-            yield return ResetUserData();
-        }
-        else
-        {
-            _ErrorText.text = webRequest.downloadHandler.text;
-        }
+            if (result == "success")
+            {
+                StartCoroutine(ResetUserData());
+            }
+            else
+            {
+                _ErrorText.text = result;
+            }
+        });
     }
 
     private IEnumerator ResetUserData()
@@ -230,39 +217,26 @@ public class PausePanel : MonoBehaviour
             yield break;
         }
 
+        _LoadingPanel.gameObject.SetActive(true);
+        _LoadingText.text = "contacting server...";
+
         WWWForm form = new WWWForm();
         form.AddField( register ? "register" : "login", 1);
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
-        UnityWebRequest webRequest = UnityWebRequest.Post("https://patrickwinkelholz.com/leaderboard.php", form);
-
-        _LoadingPanel.gameObject.SetActive(true);
-        _LoadingText.text = "contacting server...";
-        yield return webRequest.SendWebRequest();
-        yield return ResetUserData();
-
-        _LoadingPanel.gameObject.SetActive(false);
-
-        if (!webRequest.isDone)
+        yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
         {
-            Debug.LogError("Not Done!");
-            yield break;
-        }
-
-        if (webRequest.isNetworkError)
-        {
-            _ErrorText.text = "Network Error!";
-            yield break;
-        }
-
-        if (webRequest.downloadHandler.text == "success")
-        {
-            ChangePanel(_CitySearchPanel);
-        }
-        else
-        {
-            _ErrorText.text = webRequest.downloadHandler.text;
-        }
+            _LoadingPanel.gameObject.SetActive(false);
+            StartCoroutine(ResetUserData());
+            if (result == "success")
+            {
+                ChangePanel(_CitySearchPanel);
+            }
+            else
+            {
+                _ErrorText.text = result;
+            }
+        });
     }
 
     public void OnBackPressed()
@@ -309,11 +283,11 @@ public class PausePanel : MonoBehaviour
     private IEnumerator GenerateCityRoutine(string cityName, string boundingBox)
     {
         _LoadingPanel.gameObject.SetActive(true);
-        yield return GameManager.Instance.ChangeCity(cityName, boundingBox, (cityChanged)=>
+        yield return GameManager.Instance.ChangeCity(cityName, boundingBox, result=>
         { 
-            if (!cityChanged)
+            if (result != "success")
             {
-                _ErrorText.text = "Can't generate cityData for " + cityName;
+                _ErrorText.text = result;
             }
         });
         _LoadingPanel.gameObject.SetActive(false);
@@ -329,8 +303,14 @@ public class PausePanel : MonoBehaviour
     {
         _LoadingPanel.gameObject.SetActive(true);
         string cityName = _SearchInputField.text.ToLower();
-        yield return GameManager.Instance.OsmProcessor.SearchCities(cityName, (searchResults) =>
+        yield return GameManager.Instance.OsmProcessor.SearchCities(cityName, (callbackResult, searchResults) =>
         {
+            if (callbackResult != "success")
+            {
+                _ErrorText.text = callbackResult;
+                return;
+            }
+
             for (int i = 0; i < _SearchResultViewportContent.childCount; i++)
             {
                 Destroy(_SearchResultViewportContent.GetChild(i).gameObject);
@@ -363,56 +343,41 @@ public class PausePanel : MonoBehaviour
         WWWForm form = new WWWForm();
         form.AddField("readLeaderboard", 1);
         form.AddField("cityName", GameManager.Instance.City.name);
-        UnityWebRequest webRequest = UnityWebRequest.Post("https://patrickwinkelholz.com/leaderboard.php", form);
-
-        yield return webRequest.SendWebRequest();
-
-        if (!webRequest.isDone)
+        yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result =>
         {
-            Debug.LogError("Not Done!");
-            yield break;
-        }
-
-        if (webRequest.isNetworkError)
-        {
-            _ErrorText.text = "Network Error!";
-            yield break;
-        }
-
-        string result = webRequest.downloadHandler.text;
-        string[] entries = result.Split('\n');
-        
-        if (entries.Length > 0 && entries[0] == "results:")
-        {
-            if (entries.Length == 2)
+            string[] entries = result.Split('\n');
+            if (entries.Length > 0 && entries[0] == "results:")
             {
-                GameObject entry = Instantiate(_LeaderboardEntryPrefab, _LeaderboardViewportContent);
-                TMPro.TextMeshProUGUI text = entry.GetComponentInChildren<TMPro.TextMeshProUGUI>();
-                text.text = "no entries!";
-            }
-            foreach (string s in entries)
-            {
-                string[] values = s.Split('\t');
-                if (values.Length == 3)
+                if (entries.Length == 2)
                 {
                     GameObject entry = Instantiate(_LeaderboardEntryPrefab, _LeaderboardViewportContent);
-                    TMPro.TextMeshProUGUI[] textElements = entry.GetComponentsInChildren<TMPro.TextMeshProUGUI>();
-                    textElements[0].text = values[0];
-                    textElements[1].text = values[1];
-                    textElements[2].text = "(" + Utils.FormatTime(values[2]) + ")";
-
-                    if (values[0] == _UserNameInputField.text)
+                    TMPro.TextMeshProUGUI text = entry.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                    text.text = "no entries!";
+                }
+                foreach (string s in entries)
+                {
+                    string[] values = s.Split('\t');
+                    if (values.Length == 3)
                     {
-                        _HighScore = int.Parse(values[1]);
-                        _HighScoreTime = float.Parse(values[2]);
+                        GameObject entry = Instantiate(_LeaderboardEntryPrefab, _LeaderboardViewportContent);
+                        TMPro.TextMeshProUGUI[] textElements = entry.GetComponentsInChildren<TMPro.TextMeshProUGUI>();
+                        textElements[0].text = values[0];
+                        textElements[1].text = values[1];
+                        textElements[2].text = "(" + Utils.FormatTime(values[2]) + ")";
+
+                        if (values[0] == _UserNameInputField.text)
+                        {
+                            _HighScore = int.Parse(values[1]);
+                            _HighScoreTime = float.Parse(values[2]);
+                        }
                     }
                 }
             }
-        }
-        else
-        {
-            _ErrorText.text = result;
-        }
+            else
+            {
+                _ErrorText.text = result;
+            }
+        });
     }
 
     private void Update()
