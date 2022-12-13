@@ -63,7 +63,8 @@ public class CameraController : MonoBehaviour
 #else
             if (Input.GetMouseButton(0))
             {
-                MoveCamera(_MousePosDelta);
+                //TODO don't scale by artificial value here, find out what causes mouse to behave differently on webGL.
+                MoveCamera(_MousePosDelta * 1.65f);
             }
             float zoom = Input.GetAxis("Mouse ScrollWheel");
             if (zoom != 0f)

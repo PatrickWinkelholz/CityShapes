@@ -76,6 +76,9 @@ public class GameManager : MonoBehaviour
                 {
                     Destroy(_City.gameObject);
                 }
+
+                Debug.Log("creating city with " + cityData.Districts.Count + " districts and center " + cityData.Center);
+
                 _City = Instantiate(_CityPrefab);
                 _City.Initialize(cityData);
                 RestartGame();

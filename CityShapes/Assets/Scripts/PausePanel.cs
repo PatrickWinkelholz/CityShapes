@@ -224,10 +224,13 @@ public class PausePanel : MonoBehaviour
         form.AddField( register ? "register" : "login", 1);
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
+
         yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
         {
             _LoadingPanel.gameObject.SetActive(false);
             StartCoroutine(ResetUserData());
+
+            //ChangePanel(_CitySearchPanel);
             if (result == "success")
             {
                 ChangePanel(_CitySearchPanel);

@@ -38,6 +38,8 @@ public struct NominatimResult
 //    public Vector2 Point;
 //}
 
+
+
 public class OsmDataProcessor
 {
     public System.Action<string> StatusChangedEvent = default;
@@ -47,6 +49,8 @@ public class OsmDataProcessor
     public const float SqrMagnitudeLargestWayGap = 0.0001f;
 
     static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
+    static System.Globalization.NumberStyles _NumberStyle = System.Globalization.NumberStyles.Number;
+    static System.Globalization.CultureInfo _CultureInfo = System.Globalization.CultureInfo.InvariantCulture;
 
     public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<string, CityData> callback)
     {
@@ -80,6 +84,7 @@ public class OsmDataProcessor
             StatusChangedEvent?.Invoke("Processing district boundary data...");
 
             List<RelationData> relations = ProcessOverpassData(result);
+
             if (relations == null || relations.Count == 0)
             {
                 callback?.Invoke("failed to generate districts!", default);
@@ -163,7 +168,7 @@ public class OsmDataProcessor
             foreach (XmlNode searchResult in searchResults.ChildNodes)
             {
                 XmlAttribute addressRank = searchResult.Attributes["address_rank"];
-                if (addressRank != null && int.TryParse(addressRank.Value, out int rank)
+                if (addressRank != null && int.TryParse(addressRank.Value, _NumberStyle, _CultureInfo, out int rank)
                     && rank >= 13 && rank <= 16)
                 {
                     XmlAttribute displayName = searchResult.Attributes["display_name"];
@@ -275,9 +280,9 @@ public class OsmDataProcessor
                 XmlAttribute id = child.Attributes["id"];
 
                 if (lat != null && lon != null && id != null
-                    && float.TryParse(lat.Value, out float parsedLat)
-                    && float.TryParse(lon.Value, out float parsedLon)
-                    && long.TryParse(id.Value, out long parsedId))
+                    && float.TryParse(lat.Value, _NumberStyle, _CultureInfo, out float parsedLat)
+                    && float.TryParse(lon.Value, _NumberStyle, _CultureInfo, out float parsedLon)
+                    && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
                 {
                     //TODO: use proper mapping for lat/long to avoid distortion!!!
 
@@ -299,13 +304,13 @@ public class OsmDataProcessor
             if (child.Name == "way")
             {
                 XmlAttribute wayId = child.Attributes["id"];
-                if (long.TryParse(wayId.Value, out long parsedWayId))
+                if (long.TryParse(wayId.Value, _NumberStyle, _CultureInfo, out long parsedWayId))
                 {
                     List<long> way = new List<long>();
                     foreach (XmlNode wayChild in child.ChildNodes)
                     {
                         XmlAttribute nodeId = wayChild.Attributes["ref"];
-                        if (nodeId != null && long.TryParse(nodeId.Value, out long parsedNodeId))
+                        if (nodeId != null && long.TryParse(nodeId.Value, _NumberStyle, _CultureInfo, out long parsedNodeId))
                         {
                             way.Add(parsedNodeId);
                         }
@@ -322,7 +327,7 @@ public class OsmDataProcessor
                     XmlAttribute type = relationChild.Attributes["type"];
                     XmlAttribute id = relationChild.Attributes["ref"];
                     if (id != null && type != null
-                        && long.TryParse(id.Value, out long parsedId))
+                        && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
                     {
                         if (type.Value == "node")
                         {
@@ -350,7 +355,7 @@ public class OsmDataProcessor
                             //save label name as fallback name in case there is no admin_center/label node available
                             XmlAttribute relationId = child.Attributes["id"];
                             if (value != null && relationId != null
-                                && long.TryParse(relationId.Value, out long parsedRelationId))
+                                && long.TryParse(relationId.Value, _NumberStyle, _CultureInfo, out long parsedRelationId))
                             {
                                 names.Add(parsedRelationId, value.Value);
                                 relationReference.NameId = parsedRelationId;
@@ -358,7 +363,7 @@ public class OsmDataProcessor
                         }
                         if (key != null && key.Value == "admin_level")
                         {
-                            if (value != null && int.TryParse(value.Value, out int parsedAdminLevel))
+                            if (value != null && int.TryParse(value.Value, _NumberStyle, _CultureInfo, out int parsedAdminLevel))
                             {
                                 relationReference.AdminLevel = parsedAdminLevel;
                             }
