@@ -183,11 +183,13 @@ public class PausePanel : MonoBehaviour
 
     public void OnLoginPressed()
     {
+        _ErrorText.text = "";
         StartCoroutine(LoginRoutine(false));
     }
 
     public void OnRegisterPressed()
     {
+        _ErrorText.text = "";
         StartCoroutine(LoginRoutine(true));
     }
 
@@ -280,6 +282,7 @@ public class PausePanel : MonoBehaviour
 
     public void OnSearchPressed()
     {
+        _ErrorText.text = "";
         StartCoroutine(SearchCityRoutine());
     }
 

@@ -71,7 +71,7 @@ public class OsmDataProcessor
         {
             areaFilterString = "[admin_level=" + cityAdminLevel + "]";
         }
-        string overpassQuery = "area[\"name\"~\"^" + cityNameSplit[0] + "$\",i]" + areaFilterString + "(" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + cityNameSplit[0] + "$\",i]" + areaFilterString + "(" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
     
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
@@ -221,7 +221,7 @@ public class OsmDataProcessor
 
         string[] bboxSplit = boundingBox.Split(',');
         string[] cityNameSplit = cityName.Split(',');
-        string overpassQuery = "relation[boundary=administrative][\"name\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6|8\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
+        string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6|8\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
             if (result[0] != '<')
@@ -284,9 +284,17 @@ public class OsmDataProcessor
                     && float.TryParse(lon.Value, _NumberStyle, _CultureInfo, out float parsedLon)
                     && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
                 {
-                    //TODO: use proper mapping for lat/long to avoid distortion!!!
+                    //Apply mercator projection
+                    //https://stackoverflow.com/questions/14329691/convert-latitude-longitude-point-to-a-pixels-x-y-on-mercator-projection
+                    float mapWidth = 300.0f;
+                    float mapHeight = 150.0f;
 
-                    nodes.Add(parsedId, new Vector2(parsedLon, parsedLat));
+                    float x = (parsedLon + 180.0f) * (mapWidth/360.0f);
+                    float latRad = parsedLat * Mathf.PI / 180.0f;
+                    float mercN = Mathf.Log(Mathf.Tan((Mathf.PI / 4.0f) + (latRad / 2.0f)));
+                    float y = (mapHeight / 2) - (mapWidth * mercN / (2.0f * Mathf.PI));
+
+                    nodes.Add(parsedId, new Vector2(x, -y));
                     foreach (XmlNode nodeChild in child.ChildNodes)
                     {
                         XmlAttribute key = nodeChild.Attributes["k"];

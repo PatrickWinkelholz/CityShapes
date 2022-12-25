@@ -26,7 +26,7 @@ public class Utils
 
         using (UnityWebRequest webRequest = form == default ? UnityWebRequest.Get(url) : UnityWebRequest.Post(url, form))
         {
-            webRequest.SetRequestHeader("accept-language", "de-DE,de;q=0.9,en-GB;q=0.8,en;q=0.7,en-US;q=0.6");
+            webRequest.SetRequestHeader("accept-language", "en");//"de-DE,de;q=0.9,en-GB;q=0.8,en;q=0.7,en-US;q=0.6");
             yield return webRequest.SendWebRequest();
 
             //Debug.Log("----- recieved " + counter + " ---------\n" + webRequest.downloadHandler.text);
