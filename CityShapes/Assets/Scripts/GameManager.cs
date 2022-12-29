@@ -18,7 +18,9 @@ public class GameManager : MonoBehaviour
     [SerializeField] private CameraController _Camera = null;
 
     [SerializeField] private City _CityPrefab = default;
+    [SerializeField] private SpriteRenderer _BackgroundSpritePrefab = default;
 
+    private List<SpriteRenderer> _BackgroundSprites = null;
     public City City => _City;
     private City _City = default;
     public OsmDataProcessor OsmProcessor = new OsmDataProcessor();
@@ -76,11 +78,30 @@ public class GameManager : MonoBehaviour
                 {
                     Destroy(_City.gameObject);
                 }
+                if (_BackgroundSprites != null)
+                {
+                    foreach (SpriteRenderer sprite in _BackgroundSprites)
+                    {
+                        Destroy(sprite.gameObject);
+                    }
+                    _BackgroundSprites.Clear();
+                }
 
-                Debug.Log("creating city with " + cityData.Districts.Count + " districts and center " + cityData.Center);
+                Debug.Log("creating city with " + cityData.Districts.Count + " districts and center " + cityData.Shape.Center);
 
                 _City = Instantiate(_CityPrefab);
                 _City.Initialize(cityData);
+
+                //_BackgroundSprites
+                _BackgroundSprites = new List<SpriteRenderer>();
+                foreach (TileData tileData in cityData.BackgroundTiles)
+                {
+                    SpriteRenderer sprite = Instantiate(_BackgroundSpritePrefab);
+                    sprite.sprite = tileData.Sprite;
+                    sprite.transform.position = tileData.Pos;
+                    _BackgroundSprites.Add(sprite);
+                }
+
                 RestartGame();
                 cityChangedCallback?.Invoke("success");
             }

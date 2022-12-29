@@ -5,9 +5,6 @@ using UnityEngine;
 public class City : MonoBehaviour
 {
     [SerializeField] private District _DistrictPrefab = default;
-    [SerializeField] private float _ScaleFactor = 0.0095f;
-    public float ScaleFactor => _ScaleFactor;
-
     public Pool<District> Districts = new Pool<District>();
 
     public void Initialize(CityData cityData)
@@ -22,6 +19,6 @@ public class City : MonoBehaviour
             Districts.Add(district);
         }
 
-        Camera.main.GetComponent<CameraController>().ResetPosition(new Vector3(cityData.Center.x, cityData.Center.y, -10));
+        Camera.main.GetComponent<CameraController>().Reset(cityData);
     }
 }

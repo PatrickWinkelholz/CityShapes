@@ -21,8 +21,10 @@ public struct DistrictData
 public struct CityData
 {
     public string Name;
-    public Vector2 Center;
+    public Shape Shape;
     public List<DistrictData> Districts;
+    public TileData[,] BackgroundTiles;
+    //public Rect CameraBounds;
 }
 
 [CreateAssetMenu(fileName="CityCollection", menuName="CityCollection")]

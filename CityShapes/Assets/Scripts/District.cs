@@ -16,7 +16,18 @@ public class District : MonoBehaviour
     [SerializeField] private MeshRenderer _MeshRenderer = default;
     [SerializeField] private LineRenderer _LineRenderer = default;
 
-    private Color _InitialColor = default;
+    [SerializeField] private Color _InitialColor = default;
+    [SerializeField] private Color _InitialOutlineColor = default;
+
+    [SerializeField] private Color _PressedColor = default;
+    [SerializeField] private Color _PressedOutlineColor = default;
+
+    [SerializeField] private Color _CorrectColor = default;
+    [SerializeField] private Color _CorrectOutlineColor = default;
+
+    [SerializeField] private Color _WrongColor = default;
+    [SerializeField] private Color _WrongOutlineColor = default;
+
     private bool _ClickStarted = false;
     private Vector2 _ClickedPosition = Vector2.zero;
 
@@ -29,8 +40,7 @@ public class District : MonoBehaviour
         _MeshFilter.mesh = _Collider.CreateMesh(false, false);
 
         //CityColorScheme.ColorEntry colorEntry = _CityColorScheme.RegionColors.Find(x => x.Region.Equals(districtData.Region));
-        _InitialColor = Color.white;//colorEntry.Color;
-        _MeshRenderer.material.color = _InitialColor;
+        SetColors(_InitialColor, _InitialOutlineColor);
 
         //outline + calculate center
         List<Vector3> linePositions = new List<Vector3>();
@@ -86,7 +96,7 @@ public class District : MonoBehaviour
         _ClickedPosition = Input.mousePosition;
 #endif
         _ClickStarted = true;
-        _MeshRenderer.material.color = Color.white;        
+        SetColors(_PressedColor, _PressedOutlineColor);
     }
 
     private void Update()
@@ -110,17 +120,32 @@ public class District : MonoBehaviour
     private void CancelClick()
     {
         _ClickStarted = false;
-        _MeshRenderer.material.color = _InitialColor;
+        SetColors(_InitialColor, _InitialOutlineColor);
     }
 
-    public void SetColor(Color color) 
+    public void Lock(bool correct)
     {
-        _MeshRenderer.material.color = color;
+        Locked = true;
+        if (correct)
+        {
+            SetColors(_CorrectColor, _CorrectOutlineColor);
+        }
+        else
+        {
+            SetColors(_WrongColor, _WrongOutlineColor);
+        }
     }
 
     public void Reset()
     {
         Locked = false;
-        SetColor(_InitialColor);
+        SetColors(_InitialColor, _InitialOutlineColor);
+    }
+
+    private void SetColors(Color color, Color outlineColor)
+    {
+        _MeshRenderer.material.color = color;
+        _LineRenderer.startColor = outlineColor;
+        _LineRenderer.endColor = outlineColor;
     }
 }

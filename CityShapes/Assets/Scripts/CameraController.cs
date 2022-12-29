@@ -29,10 +29,19 @@ public class CameraController : MonoBehaviour
         _StartSize = _Camera.orthographicSize;
     }
 
-    public void ResetPosition(Vector3 startPosition)
+    public void Reset(CityData cityData)
     {
-        _StartPosition = startPosition;
-        transform.position = startPosition;
+        _MinCameraPosition = cityData.BackgroundTiles[0, 0].Pos;
+        _MaxCameraPosition = cityData.BackgroundTiles[cityData.BackgroundTiles.GetLength(0) - 1, cityData.BackgroundTiles.GetLength(1) - 1].Pos;
+        _StartPosition = new Vector3(cityData.Shape.Center.x, cityData.Shape.Center.y, -10);
+
+        _MaxCameraSize = (cityData.BackgroundTiles.GetLength(1) - OsmDataProcessor.ExtraBackgroundTiles.x * 2) * 1.9f; //using random value to avoid maxSize getting too large
+        _StartSize = _MaxCameraSize;
+        _Camera.orthographicSize = _MaxCameraSize;
+
+        _Camera.backgroundColor = new Color(0.9647059f, 0.8784314f, 0.8235294f);
+
+        transform.position = _StartPosition;
     }
 
     private void Update()
@@ -90,6 +99,7 @@ public class CameraController : MonoBehaviour
             diff -= _MaxCameraSize - _Camera.orthographicSize;
             _Camera.orthographicSize = _MaxCameraSize;
         }
+        MoveCamera(Vector3.zero);
         ZoomChanged?.Invoke(diff);
     }
 
@@ -97,8 +107,26 @@ public class CameraController : MonoBehaviour
     {
         Vector3 newPosition = transform.position;
         newPosition -= difference * (_Camera.orthographicSize / 1000);
-        newPosition.x = Mathf.Clamp(newPosition.x, _StartPosition.x + _MinCameraPosition.x, _StartPosition.x + _MaxCameraPosition.x);
-        newPosition.y = Mathf.Clamp(newPosition.y, _StartPosition.y + _MinCameraPosition.y, _StartPosition.y + _MaxCameraPosition.y);
+        float lowerXBound = _MinCameraPosition.x + _Camera.orthographicSize / 2.0f + 1.5f; //no idea why + 1.5f is necessary here but without it theres always a slim line on the left
+        float upperXBound = _MaxCameraPosition.x - _Camera.orthographicSize / 2.0f;
+        float lowerYBound = _MaxCameraPosition.y + _Camera.orthographicSize;
+        float upperYBound = _MinCameraPosition.y - _Camera.orthographicSize;
+        if (lowerXBound < upperXBound)
+        {
+            newPosition.x = Mathf.Clamp(newPosition.x, lowerXBound, upperXBound);
+        }
+        else
+        {
+            newPosition.x = transform.position.x;
+        }
+        if (lowerYBound < upperYBound)
+        {
+            newPosition.y = Mathf.Clamp(newPosition.y, lowerYBound, upperYBound);
+        }
+        else
+        {
+            newPosition.y = transform.position.y;
+        }
 
         transform.position = newPosition;
     }

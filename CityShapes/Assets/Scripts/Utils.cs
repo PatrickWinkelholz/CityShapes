@@ -19,29 +19,30 @@ public class Utils
         return seconds;
     }
 
-    static int counter = 0;
+    public static IEnumerator SendWebRequest(string url, System.Action<byte[]> callback)
+    {
+        yield return ExecuteWebRequest(url, default, (request) => callback?.Invoke(request.downloadHandler.data));
+    }
+
     public static IEnumerator SendWebRequest(string url, WWWForm form, System.Action<string> callback)
     {
-        //Debug.Log("----- sent " + counter + " -----\n" + url);
-
-        using (UnityWebRequest webRequest = form == default ? UnityWebRequest.Get(url) : UnityWebRequest.Post(url, form))
-        {
-            webRequest.SetRequestHeader("accept-language", "en");//"de-DE,de;q=0.9,en-GB;q=0.8,en;q=0.7,en-US;q=0.6");
-            yield return webRequest.SendWebRequest();
-
-            //Debug.Log("----- recieved " + counter + " ---------\n" + webRequest.downloadHandler.text);
-
-            counter++;
-
-            callback?.Invoke(webRequest.result != UnityWebRequest.Result.Success ?
-            ("WebRequest Error: " + webRequest.error) :
-            webRequest.downloadHandler.text);
-
-        }
+        yield return ExecuteWebRequest(url, form, (request) => callback?.Invoke(request.result != UnityWebRequest.Result.Success ?
+            ("WebRequest Error: " + request.downloadHandler.error) : request.downloadHandler.text));
     }
 
     public static IEnumerator SendWebRequest(string url, System.Action<string> callback)
     {
         yield return SendWebRequest(url, default, callback);
+    }
+
+    private static IEnumerator ExecuteWebRequest(string url, WWWForm form, System.Action<UnityWebRequest> callback)
+    {
+        using (UnityWebRequest webRequest = form == default ? UnityWebRequest.Get(url) : UnityWebRequest.Post(url, form))
+        {
+            webRequest.SetRequestHeader("accept-language", "en"); //"de-DE,de;q=0.9,en-GB;q=0.8,en;q=0.7,en-US;q=0.6");
+            yield return webRequest.SendWebRequest();
+
+            callback?.Invoke(webRequest);
+        }
     }
 }

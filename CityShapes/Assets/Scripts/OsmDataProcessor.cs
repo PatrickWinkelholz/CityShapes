@@ -23,7 +23,13 @@ public struct NominatimResult
 {
     public string Name;
     public string DisplayName;
-    public string BoundingBox;
+    public string BoundingBox; //minLat, maxLat, minLon, maxLon
+}
+
+public struct TileData
+{
+    public Sprite Sprite;
+    public Vector3 Pos;
 }
 
 //struct Way
@@ -44,107 +50,21 @@ public class OsmDataProcessor
 {
     public System.Action<string> StatusChangedEvent = default;
 
-    public const float ShapeScaler = 100.0f;
-    public const float SqrMagnitudeDelta = 0.00000000001f;
-    public const float SqrMagnitudeLargestWayGap = 0.0001f;
+    public const float ShapeScaler = 2.56f;
+    public const float SqrMagnitudeDelta = 0.000000001f;
+    public const float SqrMagnitudeLargestWayGap = 0.01f;
+    public static Vector2Int ExtraBackgroundTiles = new Vector2Int(1, 4);
+    static int _Zoom = 13;
 
     static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
     static System.Globalization.NumberStyles _NumberStyle = System.Globalization.NumberStyles.Number;
     static System.Globalization.CultureInfo _CultureInfo = System.Globalization.CultureInfo.InvariantCulture;
 
-    public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<string, CityData> callback)
-    {
-        Shape cityShape = default;
-        int cityAdminLevel = 0;
-        yield return ObtainCityShape(cityName, boundingBox, (shape, adminLevel) =>
-        {
-            cityShape = shape;
-            cityAdminLevel = adminLevel;
-        });
-
-        StatusChangedEvent?.Invoke("Requesting district boundary data...");
-
-        string[] bboxSplit = boundingBox.Split(',');
-        string[] cityNameSplit = cityName.Split(',');
-        string areaFilterString = "";
-        if (cityAdminLevel > 0)
-        {
-            areaFilterString = "[admin_level=" + cityAdminLevel + "]";
-        }
-        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + cityNameSplit[0] + "$\",i]" + areaFilterString + "(" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
-    
-        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
-        {
-            if (result[0] != '<')
-            {
-                callback?.Invoke(result, default);
-                return;
-            }
-
-            StatusChangedEvent?.Invoke("Processing district boundary data...");
-
-            List<RelationData> relations = ProcessOverpassData(result);
-
-            if (relations == null || relations.Count == 0)
-            {
-                callback?.Invoke("failed to generate districts!", default);
-                return;
-            }
-            Debug.Log("Generated " + relations.Count + " relations");
-
-            Dictionary<int, List<RelationData>> relationsByAdminLevel = new Dictionary<int, List<RelationData>>();
-            int adminLevelWithMostRelations = relations[0].AdminLevel;
-            foreach (RelationData relation in relations)
-            {
-                int adminLevel = relation.AdminLevel;
-                if (relationsByAdminLevel.ContainsKey(adminLevel))
-                {
-                    relationsByAdminLevel[adminLevel].Add(relation);
-                }
-                else
-                {
-                    relationsByAdminLevel.Add(adminLevel, new List<RelationData>(){ relation });
-                }
-                if (relationsByAdminLevel[adminLevel].Count > relationsByAdminLevel[adminLevelWithMostRelations].Count)
-                {
-                    adminLevelWithMostRelations = adminLevel;
-                }
-            }
-
-            CityData cityData = new CityData();
-            cityData.Name = cityName;
-            cityData.Districts = new List<DistrictData>();
-
-            StatusChangedEvent?.Invoke("Generating district shapes...");
-
-            Vector2 cityCenter = Vector2.zero;
-            foreach (RelationData relation in relationsByAdminLevel[adminLevelWithMostRelations])
-            {
-                DistrictData districtData = new DistrictData();
-                districtData.Name = relation.Name;
-                districtData.Shape = GenerateShape(relation);
-                cityData.Districts.Add(districtData);
-                cityCenter += districtData.Shape.Center;
-            }
-
-            if (cityShape.Center != default)
-            {
-                cityData.Center = cityShape.Center;
-            }
-            else
-            {
-                cityData.Center = cityCenter / cityData.Districts.Count;
-            }
-
-            callback.Invoke("success", cityData);
-        });
-    }
-
     public IEnumerator SearchCities(string query, System.Action<string, List<NominatimResult>> callback)
     {
         StatusChangedEvent?.Invoke("Requesting search results...");
 
-        yield return Utils.SendWebRequest("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1", result => 
+        yield return Utils.SendWebRequest("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1", result =>
         {
             if (result.Length == 0 || result[0] != '<')
             {
@@ -215,13 +135,61 @@ public class OsmDataProcessor
         });
     }
 
-    private IEnumerator ObtainCityShape(string cityName, string boundingBox, System.Action<Shape, int> callback)
+    public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<string, CityData> callback)
     {
         StatusChangedEvent?.Invoke("Requesting city data...");
 
-        string[] bboxSplit = boundingBox.Split(',');
-        string[] cityNameSplit = cityName.Split(',');
-        string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + cityNameSplit[0] + "$\",i][\"admin_level\"~\"4|6|8\"](" + bboxSplit[0] + "," + bboxSplit[2] + "," + bboxSplit[1] + "," + bboxSplit[3] + ");(._; >;);out qt;";
+        CityData cityData = new CityData();
+        cityData.Name = cityName;
+
+        string cityNameOnly = cityName.Split(',')[0];
+        string[] bbox = boundingBox.Split(','); //minLat, maxLat, minLon, maxLon
+
+        int cityAdminLevel = 0;
+        yield return GenerateCityShape(cityNameOnly, bbox, (shape, adminLevel) =>
+        {
+            cityData.Shape = shape;
+            cityAdminLevel = adminLevel;
+
+            StatusChangedEvent?.Invoke("Requesting district boundary data...");
+        });
+
+        string res = "";
+        yield return GenerateDistricts(cityNameOnly, bbox, cityAdminLevel, (result, districts)=> 
+        {
+            res = result;
+            cityData.Districts = districts;
+        });
+
+        if (res != "success")
+        {
+            callback?.Invoke(res, default);
+            yield break;
+        }
+
+        if (cityAdminLevel == 0)
+        {
+            //manually calculate city center from district centers in case city shape generation failed
+            foreach (DistrictData districtData in cityData.Districts)
+            {
+                cityData.Shape.Center += districtData.Shape.Center;
+            }
+            cityData.Shape.Center /= cityData.Districts.Count;
+        }
+
+        StatusChangedEvent?.Invoke("Requesting background tiles...");
+
+        yield return GenerateBackgroundTiles(bbox, (tiles) =>
+        {
+            cityData.BackgroundTiles = tiles;
+        });
+
+        callback?.Invoke("success", cityData);
+    }
+
+    private IEnumerator GenerateCityShape(string cityNameOnly, string[] bbox, System.Action<Shape, int> callback)
+    {
+        string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + cityNameOnly + "$\",i][\"admin_level\"~\"4|6|8\"](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ");(._; >;);out qt;";
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
             if (result[0] != '<')
@@ -252,6 +220,120 @@ public class OsmDataProcessor
                 return;
             }
         });
+    }
+
+    private IEnumerator GenerateDistricts(string cityNameOnly, string[] bbox, int cityAdminLevel, System.Action<string, List<DistrictData>> callback)
+    {
+        string areaFilterString = "";
+        if (cityAdminLevel > 0)
+        {
+            areaFilterString = "[admin_level=" + cityAdminLevel + "]";
+        }
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + cityNameOnly + "$\",i]" + areaFilterString + "(" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
+
+        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
+        {
+            if (result[0] != '<')
+            {
+                callback?.Invoke(result, default);
+                return;
+            }
+
+            StatusChangedEvent?.Invoke("Processing district boundary data...");
+
+            List<RelationData> relations = ProcessOverpassData(result);
+            if (relations == null || relations.Count == 0)
+            {
+                callback?.Invoke("failed to generate districts!", default);
+                return;
+            }
+
+            Debug.Log("Generated " + relations.Count + " relations");
+
+            Dictionary<int, List<RelationData>> relationsByAdminLevel = new Dictionary<int, List<RelationData>>();
+            int adminLevelWithMostRelations = relations[0].AdminLevel;
+            foreach (RelationData relation in relations)
+            {
+                int adminLevel = relation.AdminLevel;
+                if (relationsByAdminLevel.ContainsKey(adminLevel))
+                {
+                    relationsByAdminLevel[adminLevel].Add(relation);
+                }
+                else
+                {
+                    relationsByAdminLevel.Add(adminLevel, new List<RelationData>() { relation });
+                }
+                if (relationsByAdminLevel[adminLevel].Count > relationsByAdminLevel[adminLevelWithMostRelations].Count)
+                {
+                    adminLevelWithMostRelations = adminLevel;
+                }
+            }
+
+            StatusChangedEvent?.Invoke("Generating district shapes...");
+
+            List<DistrictData> districts = new List<DistrictData>();
+            foreach (RelationData relation in relationsByAdminLevel[adminLevelWithMostRelations])
+            {
+                DistrictData districtData = new DistrictData();
+                districtData.Name = relation.Name;
+                districtData.Shape = GenerateShape(relation);
+                districts.Add(districtData);
+            }
+
+            callback.Invoke("success", districts);
+        });
+    }
+
+    private IEnumerator GenerateBackgroundTiles(string[] bbox, System.Action<TileData[,]> callback)
+    {
+        //calculate tiles
+        float minLat = float.Parse(bbox[0]);
+        float maxLat = float.Parse(bbox[1]);
+        float minLon = float.Parse(bbox[2]);
+        float maxLon = float.Parse(bbox[3]);
+
+        float centerLat = minLat + (maxLat - minLat) / 2.0f;
+        float centerLon = minLon + (maxLon - minLon) / 2.0f;
+
+        CalculateTiles(minLat, minLon, out float minXTile, out float minYTile);
+        CalculateTiles(maxLat, maxLon, out float maxXTile, out float maxYTile);
+        int nrXTiles = Mathf.Abs((int)maxXTile - (int)minXTile) + 1;
+        int nrYTiles = Mathf.Abs((int)maxYTile - (int)minYTile) + 1;
+
+        TileData[,] tiles = new TileData[nrYTiles + ExtraBackgroundTiles.y * 2, nrXTiles + ExtraBackgroundTiles.x * 2];
+
+        for (int y = 0; y < nrYTiles + ExtraBackgroundTiles.y * 2; y++)
+        {
+            for (int x = 0; x < nrXTiles + ExtraBackgroundTiles.x * 2; x++)
+            {
+                int currentX = (int)Mathf.Min(minXTile, maxXTile) - ExtraBackgroundTiles.x + x;
+                int currentY = (int)Mathf.Min(minYTile, maxYTile) - ExtraBackgroundTiles.y + y;
+                string link = "https://stamen-tiles.a.ssl.fastly.net/watercolor/" + _Zoom + "/"+ currentX + "/" + currentY + ".jpg";
+                yield return Utils.SendWebRequest(link, result =>
+                {
+                    Texture2D texture = new Texture2D(256, 256);
+                    if (!ImageConversion.LoadImage(texture, result))
+                    {
+                        Debug.LogWarning("Background Sprite conversion failed!");
+                    }
+                    TileData tileData = new TileData();
+                    tileData.Sprite = Sprite.Create(texture, new Rect(0, 0, 256, 256), new Vector2(0, 1.0f));
+                    tileData.Pos = new Vector3(currentX, -currentY, 1.0f) * ShapeScaler;
+                    tiles[y, x] = tileData;
+                });
+            }
+        }
+        Debug.Log("Generated " + tiles.Length + " Backgound Tiles (" + (nrXTiles + ExtraBackgroundTiles.x * 2) + " * " + (nrYTiles + ExtraBackgroundTiles.y * 2) + ")");
+
+        callback?.Invoke(tiles);
+    }
+
+    private void CalculateTiles(float lat, float lon, out float xTile, out float yTile)
+    {
+        float n = Mathf.Pow(2, _Zoom);
+        float latRad = Mathf.Deg2Rad * lat;
+        xTile = n * ((lon + 180.0f) / 360.0f);
+        yTile = n * (1 - (Mathf.Log(Mathf.Tan(latRad) + (1.0f / Mathf.Cos(latRad))) / Mathf.PI)) / 2.0f;
     }
 
     private List<RelationData> ProcessOverpassData(string overpassResult)
@@ -285,14 +367,16 @@ public class OsmDataProcessor
                     && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
                 {
                     //Apply mercator projection
-                    //https://stackoverflow.com/questions/14329691/convert-latitude-longitude-point-to-a-pixels-x-y-on-mercator-projection
-                    float mapWidth = 300.0f;
-                    float mapHeight = 150.0f;
+                    ////https://stackoverflow.com/questions/14329691/convert-latitude-longitude-point-to-a-pixels-x-y-on-mercator-projection
+                    //float mapWidth = 100.0f;
+                    //float mapHeight = 50.0f;
 
-                    float x = (parsedLon + 180.0f) * (mapWidth/360.0f);
-                    float latRad = parsedLat * Mathf.PI / 180.0f;
-                    float mercN = Mathf.Log(Mathf.Tan((Mathf.PI / 4.0f) + (latRad / 2.0f)));
-                    float y = (mapHeight / 2) - (mapWidth * mercN / (2.0f * Mathf.PI));
+                    //float x = (parsedLon + 180.0f) * (mapWidth/360.0f);
+                    //float latRad = parsedLat * Mathf.PI / 180.0f;
+                    //float mercN = Mathf.Log(Mathf.Tan((Mathf.PI / 4.0f) + (latRad / 2.0f)));
+                    //float y = (mapHeight / 2) - (mapWidth * mercN / (2.0f * Mathf.PI));
+
+                    CalculateTiles(parsedLat, parsedLon, out float x, out float y);
 
                     nodes.Add(parsedId, new Vector2(x, -y));
                     foreach (XmlNode nodeChild in child.ChildNodes)

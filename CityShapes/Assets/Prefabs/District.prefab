@@ -53,6 +53,14 @@ MonoBehaviour:
   _MeshFilter: {fileID: 7054642263871108999}
   _MeshRenderer: {fileID: 2078356576270893087}
   _LineRenderer: {fileID: 1787164834247029112}
+  _InitialColor: {r: 0.54509807, g: 0.023529412, b: 0.9529412, a: 0.101960786}
+  _InitialOutlineColor: {r: 0.58820707, g: 0.09778087, b: 0.9716981, a: 0.8509804}
+  _PressedColor: {r: 0.44595003, g: 0.028657824, b: 0.6509434, a: 0.29803923}
+  _PressedOutlineColor: {r: 0.5882353, g: 0.09803922, b: 0.972549, a: 0.8509804}
+  _CorrectColor: {r: 0.25369355, g: 0.93333334, b: 0.02352941, a: 0.5019608}
+  _CorrectOutlineColor: {r: 0.2409205, g: 0.764151, b: 0.062477704, a: 0.8509804}
+  _WrongColor: {r: 0.5, g: 0, b: 0, a: 0.5019608}
+  _WrongOutlineColor: {r: 0.5019608, g: 0, b: 0, a: 0.8509804}
 --- !u!60 &3447967813872253000
 PolygonCollider2D:
   m_ObjectHideFlags: 0
@@ -328,7 +336,7 @@ LineRenderer:
   - {x: 0, y: 0, z: 1}
   m_Parameters:
     serializedVersion: 3
-    widthMultiplier: 0.06
+    widthMultiplier: 0.04
     widthCurve:
       serializedVersion: 2
       m_Curve:
@@ -346,8 +354,8 @@ LineRenderer:
       m_RotationOrder: 4
     colorGradient:
       serializedVersion: 2
-      key0: {r: 0.3301887, g: 0.3301887, b: 0.3301887, a: 1}
-      key1: {r: 0.32941177, g: 0.32941177, b: 0.32941177, a: 1}
+      key0: {r: 0.54683274, g: 0.023970496, b: 0.9528302, a: 0.78431374}
+      key1: {r: 0.54509807, g: 0.023529412, b: 0.9529412, a: 0.78431374}
       key2: {r: 0, g: 0, b: 0, a: 0}
       key3: {r: 0, g: 0, b: 0, a: 0}
       key4: {r: 0, g: 0, b: 0, a: 0}

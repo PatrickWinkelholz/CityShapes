@@ -27,14 +27,12 @@ public class DistrictGameMode : GameMode
 
         if (_CurrentDistrict == district)
         {
-            district.SetColor(Color.green);
-            district.Locked = true;
+            district.Lock(true);
             GameManager.Instance.Score++;
         }
         else
         {
-            _CurrentDistrict.SetColor(Color.red);
-            _CurrentDistrict.Locked = true;
+            _CurrentDistrict.Lock(false);
         }
         NextDistrict();
     }

@@ -2684,7 +2684,7 @@ MonoBehaviour:
   _Camera: {fileID: 519420031}
   _ZoomSpeed: 2.5
   _MaxCameraSize: 25
-  _MinCameraSize: 4
+  _MinCameraSize: 3
   _MinCameraPosition: {x: -35, y: -35}
   _MaxCameraPosition: {x: 35, y: 35}
 --- !u!20 &519420031
@@ -9112,6 +9112,8 @@ MonoBehaviour:
   _GameMode: {fileID: 1801965208}
   _Camera: {fileID: 519420030}
   _CityPrefab: {fileID: 2602793545324846512, guid: 026aa680a4ba8644180a2224d770f991,
+    type: 3}
+  _BackgroundSpritePrefab: {fileID: 8623681491476446459, guid: 3f0810ed175e4514d9534d86d0447bc1,
     type: 3}
 --- !u!4 &1801965206
 Transform:
