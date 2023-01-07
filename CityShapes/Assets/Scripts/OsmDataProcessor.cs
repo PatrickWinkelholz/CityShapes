@@ -297,37 +297,65 @@ public class OsmDataProcessor
 
         CalculateTiles(minLat, minLon, out float minXTile, out float minYTile);
         CalculateTiles(maxLat, maxLon, out float maxXTile, out float maxYTile);
-        int nrXTiles = Mathf.Abs((int)maxXTile - (int)minXTile) + 1;
-        int nrYTiles = Mathf.Abs((int)maxYTile - (int)minYTile) + 1;
+        
+        //amount of tiles required to cover the entire city
+        Vector2Int necessaryTiles = new Vector2Int(
+            Mathf.Abs((int)maxXTile - (int)minXTile) + 1, 
+            Mathf.Abs((int)maxYTile - (int)minYTile) + 1);
 
-        TileData[,] tiles = new TileData[nrYTiles + ExtraBackgroundTiles.y * 2, nrXTiles + ExtraBackgroundTiles.x * 2];
+        //total tiles, including extra tiles for more space
+        Vector2Int totalTiles = new Vector2Int(
+            necessaryTiles.x + ExtraBackgroundTiles.x * 2,
+            necessaryTiles.y + ExtraBackgroundTiles.y * 2);
 
-        for (int y = 0; y < nrYTiles + ExtraBackgroundTiles.y * 2; y++)
+        TileData[,] tiles = new TileData[totalTiles.y, totalTiles.x];
+
+        int processedTiles = 0;
+        for (int y = 0; y < totalTiles.y; y++)
         {
-            for (int x = 0; x < nrXTiles + ExtraBackgroundTiles.x * 2; x++)
+            for (int x = 0; x < totalTiles.x; x++)
             {
-                int currentX = (int)Mathf.Min(minXTile, maxXTile) - ExtraBackgroundTiles.x + x;
-                int currentY = (int)Mathf.Min(minYTile, maxYTile) - ExtraBackgroundTiles.y + y;
-                string link = "https://stamen-tiles.a.ssl.fastly.net/watercolor/" + _Zoom + "/"+ currentX + "/" + currentY + ".jpg";
-                yield return Utils.SendWebRequest(link, result =>
+                Vector2Int tileCords = new Vector2Int(
+                    (int)Mathf.Min(minXTile, maxXTile) - ExtraBackgroundTiles.x + x,
+                    (int)Mathf.Min(minYTile, maxYTile) - ExtraBackgroundTiles.y + y);
+                GameManager.Instance.StartCoroutine(RequestTile(tileCords.x, tileCords.y, x, y, (destX, destY, tileData) => 
                 {
-                    Texture2D texture = new Texture2D(256, 256);
-                    if (!ImageConversion.LoadImage(texture, result))
-                    {
-                        Debug.LogWarning("Background Sprite conversion failed!");
-                    }
-                    TileData tileData = new TileData();
-                    tileData.Sprite = Sprite.Create(texture, new Rect(0, 0, 256, 256), new Vector2(0, 1.0f));
-                    tileData.Pos = new Vector3(currentX, -currentY, 1.0f) * ShapeScaler;
-                    tiles[y, x] = tileData;
-                });
+                    tiles[destY, destX] = tileData;
+                    processedTiles++;
+                }));
             }
         }
-        Debug.Log("Generated " + tiles.Length + " Backgound Tiles (" + (nrXTiles + ExtraBackgroundTiles.x * 2) + " * " + (nrYTiles + ExtraBackgroundTiles.y * 2) + ")");
+
+        while(processedTiles < totalTiles.x * totalTiles.y)
+        {
+            yield return null;
+        }
+
+        Debug.Log("Generated " + tiles.Length + " Backgound Tiles (" + totalTiles.x + " * " + totalTiles.y + ")");
 
         callback?.Invoke(tiles);
     }
 
+    //a lot of requests will be running parallel. passing destX and destY is necessary because their local values will have changed by the time the callback is called
+    private IEnumerator RequestTile( int x, int y, int destX, int destY, System.Action<int, int, TileData> callback)
+    {
+        string link = "https://stamen-tiles.a.ssl.fastly.net/watercolor/" + _Zoom + "/" + x + "/" + y + ".jpg";
+        yield return Utils.SendWebRequest(link, result =>
+        {
+            Texture2D texture = new Texture2D(256, 256);
+            if (!ImageConversion.LoadImage(texture, result))
+            {
+                Debug.LogWarning("Background Sprite conversion failed!");
+            }
+            TileData tileData = new TileData();
+            tileData.Sprite = Sprite.Create(texture, new Rect(0, 0, 256, 256), new Vector2(0, 1.0f));
+            tileData.Pos = new Vector3(x, -y, 1.0f) * ShapeScaler;
+            callback?.Invoke(destX, destY, tileData);
+        });
+    }
+
+    //this function calculates the position of any lat/lon coordinate on slippy map tiles
+    //https://wiki.openstreetmap.org/wiki/Slippy_map_tilenames
     private void CalculateTiles(float lat, float lon, out float xTile, out float yTile)
     {
         float n = Mathf.Pow(2, _Zoom);
