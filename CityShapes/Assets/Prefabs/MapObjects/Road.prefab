@@ -25,7 +25,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8438354448305721262}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -5}
+  m_LocalPosition: {x: 0, y: 0, z: -0.1}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -159,17 +159,17 @@ PrefabInstance:
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: _WrongColor.b
-      value: 0.24997647
+      value: 0.1985
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: _WrongColor.g
-      value: 0.24997647
+      value: 0.1985
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: _WrongColor.r
-      value: 0.5019608
+      value: 0.794
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
@@ -239,6 +239,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
+      propertyPath: _WrongOutlineColor.r
+      value: 0.545
+      objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
       propertyPath: _CorrectOutlineColor.a
       value: 1
       objectReference: {fileID: 0}
@@ -255,7 +260,7 @@ PrefabInstance:
     - target: {fileID: 1787164834247029112, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: m_Parameters.widthMultiplier
-      value: 0.08
+      value: 0.11
       objectReference: {fileID: 0}
     - target: {fileID: 2619318265998701369, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}

@@ -2,10 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
 public enum ObjectType
 {
-    District,
-    Road
+    District = 0,
+    Road = 1
 }
 
 public class MapObject : MonoBehaviour
@@ -151,12 +152,12 @@ public class MapObject : MonoBehaviour
         if (correct)
         {
             SetColors(_CorrectColor, _CorrectOutlineColor);
-            transform.position += new Vector3(0, 0, 0.3f);
+            transform.position += new Vector3(0, 0, -0.6f);
         }
         else
         {
             SetColors(_WrongColor, _WrongOutlineColor);
-            transform.position += new Vector3(0, 0, 0.6f);
+            transform.position += new Vector3(0, 0, -0.3f);
         }
     }
 

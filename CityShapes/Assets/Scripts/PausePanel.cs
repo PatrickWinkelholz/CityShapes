@@ -24,16 +24,19 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private GameObject _CitySearchPanel = null;
     [SerializeField] private GameObject _MenuContentPanel = null;
     [SerializeField] private GameObject _LeaderboardPanel = null;
+    [SerializeField] private GameObject _GameModePanel = null;
     [SerializeField] private GameObject _LoginPanel = null;
-    [SerializeField] private SearchResultEntry _SearchResultEntryPrefab = default;
+    [SerializeField] private GameObject _SearchResultEntryPrefab = default;
     [SerializeField] private GameObject _LeaderboardEntryPrefab = default;
     [SerializeField] private Transform _SearchResultViewportContent = default;
     [SerializeField] private Transform _LeaderboardViewportContent = default;
     [SerializeField] private Transform _LoadingPanel = default;
     [SerializeField] private TMPro.TextMeshProUGUI _LoadingText = default;
-    [SerializeField] private Button _BackButton = default;
+    [SerializeField] private Button _CitySearchBackButton = default;
+    [SerializeField] private Button _GameModeBackButton = default;
     [SerializeField] private TMPro.TextMeshProUGUI _TimeIndicator = default;
     [SerializeField] private GameObject _PauseButton = default;
+    [SerializeField] private TMPro.TextMeshProUGUI _ModeButtonText = default;
 
     private Vector3 _NotPausedPosition = default;
     private Vector3 _PausedPosition = Vector3.zero;
@@ -41,6 +44,11 @@ public class PausePanel : MonoBehaviour
     private GameObject _CurrentPanel = default;
     private int _HighScore = 0;
     private float _HighScoreTime = 0.0f;
+    private Dictionary<ObjectType, string> _modeAbbreviations = new Dictionary<ObjectType, string>()
+    { 
+        { ObjectType.District, "Dst" }, 
+        { ObjectType.Road, "Rod" } 
+    };
 
     private void Awake()
     {
@@ -52,6 +60,8 @@ public class PausePanel : MonoBehaviour
     private void Start()
     {
         UpdateScoreDisplay();
+
+
     }
 
     private void OnEnable()
@@ -100,7 +110,8 @@ public class PausePanel : MonoBehaviour
     private void OnRestarting()
     {
         ChangePanel(_MenuContentPanel);
-        _BackButton.gameObject.SetActive(true);
+        _CitySearchBackButton.gameObject.SetActive(true);
+        _GameModeBackButton.gameObject.SetActive(true);
         TogglePause();
     }
 
@@ -126,6 +137,7 @@ public class PausePanel : MonoBehaviour
         form.AddField("submitScore", GameManager.Instance.Score);
         form.AddField("time", GameManager.Instance.Timer.ToString());
         form.AddField("cityName", GameManager.Instance.City.gameObject.name);
+        form.AddField("mode", _modeAbbreviations[GameManager.Instance.MapObjectType]);
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
 
@@ -235,7 +247,7 @@ public class PausePanel : MonoBehaviour
             //ChangePanel(_CitySearchPanel);
             if (result == "success")
             {
-                ChangePanel(_CitySearchPanel);
+                ChangePanel(_GameModePanel);
             }
             else
             {
@@ -305,9 +317,32 @@ public class PausePanel : MonoBehaviour
         StartCoroutine(GenerateCityRoutine(cityName, boundingBox));
     }
 
+    public void OnGameModePressed(int mode)
+    {
+        _LoadingPanel.gameObject.SetActive(true);
+        StartCoroutine(GameManager.Instance.ChangeMode((ObjectType)mode, result =>
+        {
+            if (result != "success")
+            {
+                _ErrorText.text = result;
+                return;
+            }
+            _LoadingPanel.gameObject.SetActive(false);
+            
+            if (GameManager.Instance.City != null)
+            {
+                StartCoroutine(ResetUserData());
+            }
+            else
+            {
+                ChangePanel(_CitySearchPanel);
+            }
+        }));
+    }
+
     public void OnChangeGameModePressed()
     {
-        GameManager.Instance.MapObjectType = GameManager.Instance.MapObjectType == ObjectType.District ? ObjectType.Road : ObjectType.District;
+        ChangePanel(_GameModePanel);
     }
 
     private IEnumerator SearchCityRoutine()
@@ -329,7 +364,7 @@ public class PausePanel : MonoBehaviour
 
             foreach (NominatimResult result in searchResults)
             {
-                SearchResultEntry entry = Instantiate(_SearchResultEntryPrefab, _SearchResultViewportContent);
+                GameObject entry = Instantiate(_SearchResultEntryPrefab, _SearchResultViewportContent);
                 TMPro.TextMeshProUGUI text = entry.GetComponentInChildren<TMPro.TextMeshProUGUI>();
                 if (text)
                 {
@@ -354,6 +389,7 @@ public class PausePanel : MonoBehaviour
         WWWForm form = new WWWForm();
         form.AddField("readLeaderboard", 1);
         form.AddField("cityName", GameManager.Instance.City.name);
+        form.AddField("mode", _modeAbbreviations[GameManager.Instance.MapObjectType]);
         yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result =>
         {
             string[] entries = result.Split('\n');

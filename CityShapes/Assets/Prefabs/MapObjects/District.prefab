@@ -17,6 +17,26 @@ PrefabInstance:
       propertyPath: _PolygonCollider
       value: 
       objectReference: {fileID: 7139981535192228062}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _WrongOutlineColor.r
+      value: 0.403
+      objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _CorrectOutlineColor.b
+      value: 0.0481641
+      objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _CorrectOutlineColor.g
+      value: 0.587
+      objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _CorrectOutlineColor.r
+      value: 0.18362565
+      objectReference: {fileID: 0}
     - target: {fileID: 2619318265998701369, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: m_Name

@@ -11,7 +11,7 @@ public class GameManager : MonoBehaviour
     public event System.Action GameOverEvent;
     public event System.Action GameRestartingEvent;
 
-    [SerializeField] private CityCollection _CityCollection = null;
+    //[SerializeField] private CityCollection _CityCollection = null;
     public OsmDataProcessor OsmDataProcessor => _OsmDataProcessor;
     [SerializeField] private OsmDataProcessor _OsmDataProcessor = default;
     public GameMode GameMode => _GameMode;
@@ -60,6 +60,27 @@ public class GameManager : MonoBehaviour
         GameRestartingEvent?.Invoke();
     }
 
+    public IEnumerator ChangeMode(ObjectType mode, System.Action<string> callback)
+    {
+        MapObjectType = mode;
+        if (_City != null)
+        {
+            yield return OsmDataProcessor.GenerateMapObjects((result, mapObjects) =>
+            {
+                if (result != "success")
+                {
+                    callback?.Invoke(result);
+                    return;
+                }
+                CityData cityData = _City.CityData;
+                cityData.MapObjects = mapObjects;
+                _City.Initialize(cityData);
+                RestartGame();
+            });
+        }
+        callback?.Invoke("success");
+    }
+
     public IEnumerator ChangeCity(string cityName, string boundingBox, System.Action<string> cityChangedCallback)
     {
         System.Action<string, CityData> callback = (result, cityData) =>
@@ -70,10 +91,10 @@ public class GameManager : MonoBehaviour
                 return;
             }
 
-            if (!_CityCollection.Cities.ContainsKey(cityName))
-            {
-                _CityCollection.Cities.Add(cityName, cityData);
-            }
+            //if (!_CityCollection.Cities.ContainsKey(cityName))
+            //{
+            //    _CityCollection.Cities.Add(cityName, cityData);
+            //}
 
             if (_City)
             {
@@ -106,15 +127,18 @@ public class GameManager : MonoBehaviour
             RestartGame();
             cityChangedCallback?.Invoke("success");
         };
+        yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
 
-        if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
-        {
-            callback.Invoke("success", outCityData);
-        }
-        else
-        {
-            yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
-        }
+        //TODO: caching!!!!
+
+        //if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
+        //{
+        //    callback.Invoke("success", outCityData);
+        //}
+        //else
+        //{
+        //    yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
+        //}
     }
 
     public void EndGame()

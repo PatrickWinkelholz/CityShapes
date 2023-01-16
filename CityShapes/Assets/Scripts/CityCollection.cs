@@ -24,7 +24,6 @@ public struct CityData
     public Shape Shape;
     public List<MapObjectData> MapObjects;
     public TileData[,] BackgroundTiles;
-    //public Rect CameraBounds;
 }
 
 [CreateAssetMenu(fileName="CityCollection", menuName="CityCollection")]

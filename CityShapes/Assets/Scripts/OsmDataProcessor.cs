@@ -81,6 +81,10 @@ public class OsmDataProcessor : MonoBehaviour
     static System.Globalization.NumberStyles _NumberStyle = System.Globalization.NumberStyles.Number;
     static System.Globalization.CultureInfo _CultureInfo = System.Globalization.CultureInfo.InvariantCulture;
 
+    private string[] _CityBbox = default;
+    private int _CityAdminLevel = default;
+    private string _CityName = default;
+
     public IEnumerator SearchCities(string query, System.Action<string, List<NominatimResult>> callback)
     {
         StatusChangedEvent?.Invoke("Requesting search results...");
@@ -156,40 +160,28 @@ public class OsmDataProcessor : MonoBehaviour
         });
     }
 
-    public IEnumerator GenerateCityData(string cityName, string boundingBox, System.Action<string, CityData> callback)
+    public IEnumerator GenerateCityData(string fullCityName, string boundingBox, System.Action<string, CityData> callback)
     {
         StatusChangedEvent?.Invoke("Requesting city data...");
 
         CityData cityData = new CityData();
-        cityData.Name = cityName;
+        cityData.Name = fullCityName;
 
-        string cityNameOnly = cityName.Split(',')[0];
-        string[] bbox = boundingBox.Split(','); //minLat, maxLat, minLon, maxLon
+        _CityName = fullCityName.Split(',')[0];
+        _CityBbox = boundingBox.Split(','); //minLat, maxLat, minLon, maxLon
+        _CityAdminLevel = 0;
 
-        int cityAdminLevel = 0;
-        yield return GenerateCityShape(cityNameOnly, bbox, (shape, adminLevel) =>
+        yield return GenerateCityShape(shape =>
         {
             cityData.Shape = shape;
-            cityAdminLevel = adminLevel;
         });
 
         string res = "";
-        if (GameManager.Instance.MapObjectType == ObjectType.District)
+        yield return GenerateMapObjects((result, mapObjects) =>
         {
-            yield return GenerateDistricts(cityNameOnly, bbox, cityAdminLevel, (result, districts) =>
-            {
-                res = result;
-                cityData.MapObjects = districts;
-            });
-        }
-        else
-        {
-            yield return GenerateRoads(cityNameOnly, bbox, cityAdminLevel, (result, roads) =>
-            {
-                res = result;
-                cityData.MapObjects = roads;
-            });
-        }
+            res = result;
+            cityData.MapObjects = mapObjects;
+        });
 
         if (res != "success")
         {
@@ -197,7 +189,7 @@ public class OsmDataProcessor : MonoBehaviour
             yield break;
         }
 
-        if (cityAdminLevel == 0)
+        if (_CityAdminLevel == 0)
         {
             //manually calculate city center from mapObject centers in case city shape generation failed
             foreach (MapObjectData MapObjectData in cityData.MapObjects)
@@ -209,7 +201,7 @@ public class OsmDataProcessor : MonoBehaviour
 
         StatusChangedEvent?.Invoke("Requesting background tiles...");
 
-        yield return GenerateBackgroundTiles(bbox, (tiles) =>
+        yield return GenerateBackgroundTiles((tiles) =>
         {
             cityData.BackgroundTiles = tiles;
         });
@@ -217,9 +209,9 @@ public class OsmDataProcessor : MonoBehaviour
         callback?.Invoke("success", cityData);
     }
 
-    private IEnumerator GenerateCityShape(string cityNameOnly, string[] bbox, System.Action<Shape, int> callback)
+    private IEnumerator GenerateCityShape(System.Action<Shape> callback)
     {
-        string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + cityNameOnly + "$\",i][\"admin_level\"~\"4|6|8\"](" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ");(._; >;);out qt;";
+        string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + _CityName + "$\",i][\"admin_level\"~\"4|6|8\"](" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._; >;);out qt;";
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
             if (result[0] != '<')
@@ -245,7 +237,8 @@ public class OsmDataProcessor : MonoBehaviour
                 }
                 StatusChangedEvent?.Invoke("Generating city shape...");
                 Shape cityShape = GenerateShape(relations[largestAdminLevelIndex].Ways, relations[largestAdminLevelIndex].Center);
-                callback.Invoke(cityShape, relations[largestAdminLevelIndex].AdminLevel);
+                _CityAdminLevel = relations[largestAdminLevelIndex].AdminLevel;
+                callback.Invoke(cityShape);
             }
             else
             {
@@ -255,16 +248,28 @@ public class OsmDataProcessor : MonoBehaviour
         });
     }
 
-    private IEnumerator GenerateDistricts(string cityNameOnly, string[] bbox, int cityAdminLevel, System.Action<string, List<MapObjectData>> callback)
+    public IEnumerator GenerateMapObjects(System.Action<string, List<MapObjectData>> callback)
+    {
+        if (GameManager.Instance.MapObjectType == ObjectType.District)
+        {
+            yield return GenerateDistricts(callback);
+        }
+        else
+        {
+            yield return GenerateRoads(callback);
+        }
+    }
+
+    private IEnumerator GenerateDistricts(System.Action<string, List<MapObjectData>> callback)
     {
         StatusChangedEvent?.Invoke("Requesting district boundary data...");
 
         string areaFilterString = "";
-        if (cityAdminLevel > 0)
+        if (_CityAdminLevel > 0)
         {
-            areaFilterString = "[admin_level=" + cityAdminLevel + "]";
+            areaFilterString = "[admin_level=" + _CityAdminLevel + "]";
         }
-        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + cityNameOnly + "$\",i]" + areaFilterString + "(" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + "(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
 
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
@@ -327,16 +332,16 @@ public class OsmDataProcessor : MonoBehaviour
         });
     }
 
-    private IEnumerator GenerateRoads(string cityNameOnly, string[] bbox, int cityAdminLevel, System.Action<string, List<MapObjectData>> callback)
+    private IEnumerator GenerateRoads(System.Action<string, List<MapObjectData>> callback)
     {
         StatusChangedEvent?.Invoke("Requesting road data...");
 
         string areaFilterString = "";
-        if (cityAdminLevel > 0)
+        if (_CityAdminLevel > 0)
         {
-            areaFilterString = "[admin_level=" + cityAdminLevel + "]";
+            areaFilterString = "[admin_level=" + _CityAdminLevel + "]";
         }
-        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + cityNameOnly + "$\",i]" + areaFilterString + "(" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.a;way[~\"^name|ref$\"~\".\"][\"highway\"~\"^(trunk|motorway|primary|secondary" /*|tertiary*/ + ")$\"](area.a);(._;>;);out qt;";
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + "(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ")->.a;way[~\"^name|ref$\"~\".\"][\"highway\"~\"^(trunk|motorway|primary|secondary" /*|tertiary*/ + ")$\"](area.a);(._;>;);out qt;";
 
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
@@ -410,13 +415,13 @@ public class OsmDataProcessor : MonoBehaviour
     //    }
     //}
 
-    private IEnumerator GenerateBackgroundTiles(string[] bbox, System.Action<TileData[,]> callback)
+    private IEnumerator GenerateBackgroundTiles(System.Action<TileData[,]> callback)
     {
         //calculate tiles
-        float minLat = float.Parse(bbox[0]);
-        float maxLat = float.Parse(bbox[1]);
-        float minLon = float.Parse(bbox[2]);
-        float maxLon = float.Parse(bbox[3]);
+        float minLat = float.Parse(_CityBbox[0]);
+        float maxLat = float.Parse(_CityBbox[1]);
+        float minLon = float.Parse(_CityBbox[2]);
+        float maxLon = float.Parse(_CityBbox[3]);
 
         float centerLat = minLat + (maxLat - minLat) / 2.0f;
         float centerLon = minLon + (maxLon - minLon) / 2.0f;
