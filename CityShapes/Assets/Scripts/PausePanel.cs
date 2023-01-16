@@ -15,7 +15,7 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private TMPro.TextMeshProUGUI _HighScoreDisplay = null;
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreTimeDisplay = null;
     [SerializeField] private TMPro.TextMeshProUGUI _HighScoreTimeDisplay = null;
-    [SerializeField] private Button _DistrictsButton = null;
+    [SerializeField] private Button _MapObjectsButton = null;
     [SerializeField] private Button _LandmarksButton = null;
     [SerializeField] private TMPro.TMP_InputField _SearchInputField = null;
     [SerializeField] private TMPro.TMP_InputField _UserNameInputField = null;
@@ -58,14 +58,14 @@ public class PausePanel : MonoBehaviour
     {
         GameManager.Instance.GameOverEvent += OnGameOver;
         GameManager.Instance.GameRestartingEvent += OnRestarting;
-        GameManager.Instance.OsmProcessor.StatusChangedEvent += OnOsmProcessorStatusChanged;
+        GameManager.Instance.OsmDataProcessor.StatusChangedEvent += OnOsmProcessorStatusChanged;
     }
 
     private void OnDisable()
     {
         GameManager.Instance.GameOverEvent -= OnGameOver;
         GameManager.Instance.GameRestartingEvent -= OnRestarting;
-        GameManager.Instance.OsmProcessor.StatusChangedEvent -= OnOsmProcessorStatusChanged;
+        GameManager.Instance.OsmDataProcessor.StatusChangedEvent -= OnOsmProcessorStatusChanged;
     }
 
     private void OnOsmProcessorStatusChanged(string status)
@@ -153,10 +153,10 @@ public class PausePanel : MonoBehaviour
         UpdateScoreDisplay();
     }
 
-    public void OnDistrictsPressed()
+    public void OnMapObjectsPressed()
     {
         _LandmarksButton.interactable = true;
-        _DistrictsButton.interactable = false;
+        _MapObjectsButton.interactable = false;
 
         UpdateScoreDisplay();
     }
@@ -164,7 +164,7 @@ public class PausePanel : MonoBehaviour
     public void OnLandmarksPressed()
     {
         _LandmarksButton.interactable = false;
-        _DistrictsButton.interactable = true;
+        _MapObjectsButton.interactable = true;
 
         UpdateScoreDisplay();
     }
@@ -305,11 +305,16 @@ public class PausePanel : MonoBehaviour
         StartCoroutine(GenerateCityRoutine(cityName, boundingBox));
     }
 
+    public void OnChangeGameModePressed()
+    {
+        GameManager.Instance.MapObjectType = GameManager.Instance.MapObjectType == ObjectType.District ? ObjectType.Road : ObjectType.District;
+    }
+
     private IEnumerator SearchCityRoutine()
     {
         _LoadingPanel.gameObject.SetActive(true);
         string cityName = _SearchInputField.text.ToLower();
-        yield return GameManager.Instance.OsmProcessor.SearchCities(cityName, (callbackResult, searchResults) =>
+        yield return GameManager.Instance.OsmDataProcessor.SearchCities(cityName, (callbackResult, searchResults) =>
         {
             if (callbackResult != "success")
             {

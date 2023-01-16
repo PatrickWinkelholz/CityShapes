@@ -8,15 +8,13 @@ public struct RelationData
     public string Name;
     public int AdminLevel;
     public Vector2 Center;
-    public List<List<Vector2>> Ways;
+    public List<WayData> Ways;
 }
 
-public struct RelationReference
+public struct WayData
 {
-    public long CenterId;
-    public int AdminLevel;
-    public long NameId;
-    public List<long> WayIds;
+    public string Name;
+    public List<Vector2> Points;
 }
 
 public struct NominatimResult
@@ -32,29 +30,52 @@ public struct TileData
     public Vector3 Pos;
 }
 
-//struct Way
-//{
-//    public ulong Id;
-//    public List<Node> Nodes;
-//}
 
-//struct Node
-//{
-//    public ulong Id;
-//    public Vector2 Point;
-//}
-
-
-
-public class OsmDataProcessor
+public class OsmDataProcessor : MonoBehaviour
 {
+    private struct OverpassData
+    {
+        public OverpassData(
+            Dictionary<long, string> names,
+            Dictionary<long, Vector2> nodes,
+            Dictionary<long, WayReference> ways,
+            List<RelationReference> relations)
+        {
+            Names = names;
+            Nodes = nodes;
+            Ways = ways;
+            Relations = relations;
+        }
+
+        public Dictionary<long, string> Names;
+        public Dictionary<long, Vector2> Nodes;
+        public Dictionary<long, WayReference> Ways;
+        public List<RelationReference> Relations;
+    }
+
+    private struct RelationReference
+    {
+        public long CenterId;
+        public int AdminLevel;
+        public long NameId;
+        public List<long> WayIds;
+    }
+
+    private struct WayReference
+    {
+        public string Name;
+        public List<long> NodeIds;
+    }
+
     public System.Action<string> StatusChangedEvent = default;
 
-    public const float ShapeScaler = 2.56f;
-    public const float SqrMagnitudeDelta = 0.000000001f;
-    public const float SqrMagnitudeLargestWayGap = 0.01f;
-    public static Vector2Int ExtraBackgroundTiles = new Vector2Int(1, 4);
-    static int _Zoom = 13;
+    [SerializeField] private int _TileResolution = 256;
+    [SerializeField] private float _SqrMagnitudeDelta = 0.000000001f;
+    [SerializeField] private float _SqrMagnitudeLargestWayGap = 0.01f;
+    public Vector2Int NrExtraBackgroundTiles => _NrExtraBackgroundTiles;
+    [SerializeField] private Vector2Int _NrExtraBackgroundTiles = new Vector2Int(1, 4);
+    [SerializeField] private float _BackgroundTileZOffset = 20.0f;
+    [SerializeField] private int _Zoom = 13;
 
     static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
     static System.Globalization.NumberStyles _NumberStyle = System.Globalization.NumberStyles.Number;
@@ -150,16 +171,25 @@ public class OsmDataProcessor
         {
             cityData.Shape = shape;
             cityAdminLevel = adminLevel;
-
-            StatusChangedEvent?.Invoke("Requesting district boundary data...");
         });
 
         string res = "";
-        yield return GenerateDistricts(cityNameOnly, bbox, cityAdminLevel, (result, districts)=> 
+        if (GameManager.Instance.MapObjectType == ObjectType.District)
         {
-            res = result;
-            cityData.Districts = districts;
-        });
+            yield return GenerateDistricts(cityNameOnly, bbox, cityAdminLevel, (result, districts) =>
+            {
+                res = result;
+                cityData.MapObjects = districts;
+            });
+        }
+        else
+        {
+            yield return GenerateRoads(cityNameOnly, bbox, cityAdminLevel, (result, roads) =>
+            {
+                res = result;
+                cityData.MapObjects = roads;
+            });
+        }
 
         if (res != "success")
         {
@@ -169,12 +199,12 @@ public class OsmDataProcessor
 
         if (cityAdminLevel == 0)
         {
-            //manually calculate city center from district centers in case city shape generation failed
-            foreach (DistrictData districtData in cityData.Districts)
+            //manually calculate city center from mapObject centers in case city shape generation failed
+            foreach (MapObjectData MapObjectData in cityData.MapObjects)
             {
-                cityData.Shape.Center += districtData.Shape.Center;
+                cityData.Shape.Center += MapObjectData.Shape.Center;
             }
-            cityData.Shape.Center /= cityData.Districts.Count;
+            cityData.Shape.Center /= cityData.MapObjects.Count;
         }
 
         StatusChangedEvent?.Invoke("Requesting background tiles...");
@@ -199,7 +229,10 @@ public class OsmDataProcessor
             }
 
             StatusChangedEvent?.Invoke("Processing city data...");
-            List<RelationData> relations = ProcessOverpassData(result);
+
+            ProcessOverpassData(result, out OverpassData overpassData);
+            ObtainRelationsFromOverpassData(overpassData, out List<RelationData> relations);
+
             if (relations != null && relations.Count > 0)
             {
                 int largestAdminLevelIndex = 0;
@@ -211,7 +244,7 @@ public class OsmDataProcessor
                     }
                 }
                 StatusChangedEvent?.Invoke("Generating city shape...");
-                Shape cityShape = GenerateShape(relations[largestAdminLevelIndex]);
+                Shape cityShape = GenerateShape(relations[largestAdminLevelIndex].Ways, relations[largestAdminLevelIndex].Center);
                 callback.Invoke(cityShape, relations[largestAdminLevelIndex].AdminLevel);
             }
             else
@@ -222,8 +255,10 @@ public class OsmDataProcessor
         });
     }
 
-    private IEnumerator GenerateDistricts(string cityNameOnly, string[] bbox, int cityAdminLevel, System.Action<string, List<DistrictData>> callback)
+    private IEnumerator GenerateDistricts(string cityNameOnly, string[] bbox, int cityAdminLevel, System.Action<string, List<MapObjectData>> callback)
     {
+        StatusChangedEvent?.Invoke("Requesting district boundary data...");
+
         string areaFilterString = "";
         if (cityAdminLevel > 0)
         {
@@ -241,7 +276,9 @@ public class OsmDataProcessor
 
             StatusChangedEvent?.Invoke("Processing district boundary data...");
 
-            List<RelationData> relations = ProcessOverpassData(result);
+            ProcessOverpassData(result, out OverpassData overpassData);
+            ObtainRelationsFromOverpassData(overpassData, out List<RelationData> relations);
+
             if (relations == null || relations.Count == 0)
             {
                 callback?.Invoke("failed to generate districts!", default);
@@ -271,18 +308,107 @@ public class OsmDataProcessor
 
             StatusChangedEvent?.Invoke("Generating district shapes...");
 
-            List<DistrictData> districts = new List<DistrictData>();
+            List<MapObjectData> districts = new List<MapObjectData>();
             foreach (RelationData relation in relationsByAdminLevel[adminLevelWithMostRelations])
             {
-                DistrictData districtData = new DistrictData();
-                districtData.Name = relation.Name;
-                districtData.Shape = GenerateShape(relation);
-                districts.Add(districtData);
+                MapObjectData district = new MapObjectData();
+                district.Name = relation.Name;
+                district.Shape = GenerateShape(relation.Ways, relation.Center);
+                districts.Add(district);
+            }
+
+            if (districts.Count == 0)
+            {
+                callback?.Invoke("failed to generate districts!", default);
+                return;
             }
 
             callback.Invoke("success", districts);
         });
     }
+
+    private IEnumerator GenerateRoads(string cityNameOnly, string[] bbox, int cityAdminLevel, System.Action<string, List<MapObjectData>> callback)
+    {
+        StatusChangedEvent?.Invoke("Requesting road data...");
+
+        string areaFilterString = "";
+        if (cityAdminLevel > 0)
+        {
+            areaFilterString = "[admin_level=" + cityAdminLevel + "]";
+        }
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + cityNameOnly + "$\",i]" + areaFilterString + "(" + bbox[0] + "," + bbox[2] + "," + bbox[1] + "," + bbox[3] + ")->.a;way[~\"^name|ref$\"~\".\"][\"highway\"~\"^(trunk|motorway|primary|secondary" /*|tertiary*/ + ")$\"](area.a);(._;>;);out qt;";
+
+        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
+        {
+            if (result[0] != '<')
+            {
+                callback?.Invoke(result, default);
+                return;
+            }
+
+            StatusChangedEvent?.Invoke("Processing road data...");
+
+            ProcessOverpassData(result, out OverpassData overpassData);
+            ObtainWaysFromOverpassData(overpassData, out List<WayData> ways);
+
+            if (ways == null || ways.Count == 0)
+            {
+                callback?.Invoke("failed to generate roads!", default);
+                return;
+            }
+
+            StatusChangedEvent?.Invoke("Generating road shapes...");
+
+            List<MapObjectData> roads = new List<MapObjectData>();
+            do
+            {
+                MapObjectData road = new MapObjectData();
+                road.Name = ways[0].Name;
+
+                List<WayData> waysWithSameName = ways.FindAll(w => w.Name == road.Name);
+                road.Shape = GenerateShape(waysWithSameName);
+
+                roads.Add(road);
+                ways.RemoveAll(w => w.Name == road.Name);
+
+            } while (ways.Count > 0);
+
+            if (roads.Count == 0)
+            {
+                callback?.Invoke("failed to generate roads!", default);
+                return;
+            }
+
+            Debug.Log("Generated " + roads.Count + " roads");
+
+            callback.Invoke("success", roads);
+        });
+    }
+
+    //private void ExtrudeLine(List<Vector2> line)
+    //{
+    //    LineRenderer
+
+    //    //https://gamedev.stackexchange.com/questions/75182/how-can-i-create-or-extrude-a-mesh-along-a-spline
+    //    for (float i = 0; i <= 1.0f;)
+    //    {
+    //        Vector2 p = CatmullRom.calculatePoint(dataSet, i);
+    //        Vector2 deriv = CatmullRom.calculateDerivative(dataSet, i);
+    //        float len = deriv.Length();
+    //        i += step / len;
+    //        deriv.divide(len);
+    //        deriv.scale(thickness);
+    //        deriv.set(-deriv.y, deriv.x);
+    //        Vector2 v1 = new Vector2();
+    //        v1.set(p).add(deriv);
+    //        vertices.add(v1);
+    //        Vector2 v2 = new Vector2();
+    //        v2.set(p).sub(deriv);
+    //        vertices.add(v2);
+
+    //        if (i > 1.0f) i = 1.0f;
+    //    }
+    //}
 
     private IEnumerator GenerateBackgroundTiles(string[] bbox, System.Action<TileData[,]> callback)
     {
@@ -304,9 +430,9 @@ public class OsmDataProcessor
             Mathf.Abs((int)maxYTile - (int)minYTile) + 1);
 
         //total tiles, including extra tiles for more space
-        Vector2Int totalTiles = new Vector2Int(
-            necessaryTiles.x + ExtraBackgroundTiles.x * 2,
-            necessaryTiles.y + ExtraBackgroundTiles.y * 2);
+        Vector2Int totalTiles = necessaryTiles + _NrExtraBackgroundTiles * 2; // new Vector2Int(
+            //necessaryTiles.x + _NrExtraBackgroundTiles.x * 2,
+            //necessaryTiles.y + _NrExtraBackgroundTiles.y * 2);
 
         TileData[,] tiles = new TileData[totalTiles.y, totalTiles.x];
 
@@ -316,9 +442,9 @@ public class OsmDataProcessor
             for (int x = 0; x < totalTiles.x; x++)
             {
                 Vector2Int tileCords = new Vector2Int(
-                    (int)Mathf.Min(minXTile, maxXTile) - ExtraBackgroundTiles.x + x,
-                    (int)Mathf.Min(minYTile, maxYTile) - ExtraBackgroundTiles.y + y);
-                GameManager.Instance.StartCoroutine(RequestTile(tileCords.x, tileCords.y, x, y, (destX, destY, tileData) => 
+                    (int)Mathf.Min(minXTile, maxXTile) - _NrExtraBackgroundTiles.x + x,
+                    (int)Mathf.Min(minYTile, maxYTile) - _NrExtraBackgroundTiles.y + y);
+                StartCoroutine(RequestTile(tileCords.x, tileCords.y, x, y, (destX, destY, tileData) => 
                 {
                     tiles[destY, destX] = tileData;
                     processedTiles++;
@@ -342,14 +468,15 @@ public class OsmDataProcessor
         string link = "https://stamen-tiles.a.ssl.fastly.net/watercolor/" + _Zoom + "/" + x + "/" + y + ".jpg";
         yield return Utils.SendWebRequest(link, result =>
         {
-            Texture2D texture = new Texture2D(256, 256);
+            Texture2D texture = new Texture2D(_TileResolution, _TileResolution);
             if (!ImageConversion.LoadImage(texture, result))
             {
                 Debug.LogWarning("Background Sprite conversion failed!");
             }
             TileData tileData = new TileData();
-            tileData.Sprite = Sprite.Create(texture, new Rect(0, 0, 256, 256), new Vector2(0, 1.0f));
-            tileData.Pos = new Vector3(x, -y, 1.0f) * ShapeScaler;
+            tileData.Sprite = Sprite.Create(texture, new Rect(0, 0, _TileResolution, _TileResolution), new Vector2(0, 1.0f));
+            tileData.Pos = new Vector3(x, -y, 0) * (_TileResolution / 100.0f);
+            tileData.Pos.z = _BackgroundTileZOffset;
             callback?.Invoke(destX, destY, tileData);
         });
     }
@@ -364,8 +491,60 @@ public class OsmDataProcessor
         yTile = n * (1 - (Mathf.Log(Mathf.Tan(latRad) + (1.0f / Mathf.Cos(latRad))) / Mathf.PI)) / 2.0f;
     }
 
-    private List<RelationData> ProcessOverpassData(string overpassResult)
+    private void ObtainWaysFromOverpassData(OverpassData overpassData, out List<WayData> outWays)
     {
+        outWays = new List<WayData>();
+        foreach (var pair in overpassData.Ways)
+        {
+            WayData wayData = new WayData();
+            wayData.Points = new List<Vector2>();
+            wayData.Name = pair.Value.Name;
+            foreach (long nodeId in pair.Value.NodeIds)
+            {
+                wayData.Points.Add(overpassData.Nodes[nodeId]);
+            }
+            outWays.Add(wayData);
+        }
+    }
+
+    private void ObtainRelationsFromOverpassData(OverpassData overpassData, out List<RelationData> outRelations)
+    {
+        outRelations = new List<RelationData>();
+        foreach (RelationReference relationReference in overpassData.Relations)
+        {
+            RelationData relationData = new RelationData();
+            relationData.AdminLevel = relationReference.AdminLevel;
+            if (overpassData.Nodes.TryGetValue(relationReference.CenterId, out Vector2 center))
+            {
+                relationData.Center = center;
+            }
+            if (overpassData.Names.TryGetValue(relationReference.NameId, out string name))
+            {
+                relationData.Name = name;
+            }
+            relationData.Ways = new List<WayData>();
+            foreach (long wayId in relationReference.WayIds)
+            {
+                WayData wayData = new WayData();
+                wayData.Points = new List<Vector2>();
+                foreach (long nodeId in overpassData.Ways[wayId].NodeIds)
+                {
+                    wayData.Points.Add(overpassData.Nodes[nodeId]);
+                }
+                relationData.Ways.Add(wayData);
+            }
+            outRelations.Add(relationData);
+        }
+    }
+
+    private void ProcessOverpassData(string overpassResult, out OverpassData overpassData)
+    {
+        overpassData = new OverpassData(
+            new Dictionary<long, string>(),
+            new Dictionary<long, Vector2>(),
+            new Dictionary<long, WayReference>(),
+            new List<RelationReference>());
+
         XmlDocument overpassDoc = new XmlDocument();
         overpassDoc.LoadXml(overpassResult);
 
@@ -373,13 +552,8 @@ public class OsmDataProcessor
         if (osmNode == null)
         {
             Debug.LogWarning("osmNode was null!");
-            return null;
+            return;
         }
-
-        Dictionary<long, string> names = new Dictionary<long, string>();
-        Dictionary<long, Vector2> nodes = new Dictionary<long, Vector2>();
-        Dictionary<long, List<long>> ways = new Dictionary<long, List<long>>();
-        List<RelationReference> relations = new List<RelationReference>();
 
         foreach (XmlNode child in osmNode.ChildNodes)
         {
@@ -394,19 +568,9 @@ public class OsmDataProcessor
                     && float.TryParse(lon.Value, _NumberStyle, _CultureInfo, out float parsedLon)
                     && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
                 {
-                    //Apply mercator projection
-                    ////https://stackoverflow.com/questions/14329691/convert-latitude-longitude-point-to-a-pixels-x-y-on-mercator-projection
-                    //float mapWidth = 100.0f;
-                    //float mapHeight = 50.0f;
-
-                    //float x = (parsedLon + 180.0f) * (mapWidth/360.0f);
-                    //float latRad = parsedLat * Mathf.PI / 180.0f;
-                    //float mercN = Mathf.Log(Mathf.Tan((Mathf.PI / 4.0f) + (latRad / 2.0f)));
-                    //float y = (mapHeight / 2) - (mapWidth * mercN / (2.0f * Mathf.PI));
-
                     CalculateTiles(parsedLat, parsedLon, out float x, out float y);
 
-                    nodes.Add(parsedId, new Vector2(x, -y));
+                    overpassData.Nodes.Add(parsedId, new Vector2(x, -y));
                     foreach (XmlNode nodeChild in child.ChildNodes)
                     {
                         XmlAttribute key = nodeChild.Attributes["k"];
@@ -415,7 +579,7 @@ public class OsmDataProcessor
                             XmlAttribute value = nodeChild.Attributes["v"];
                             if (value != null)
                             {
-                                names.Add(parsedId, value.Value);
+                                overpassData.Names.Add(parsedId, value.Value);
                             }
                         }
                     }
@@ -426,16 +590,29 @@ public class OsmDataProcessor
                 XmlAttribute wayId = child.Attributes["id"];
                 if (long.TryParse(wayId.Value, _NumberStyle, _CultureInfo, out long parsedWayId))
                 {
-                    List<long> way = new List<long>();
+                    WayReference wayReference = new WayReference();
+                    wayReference.NodeIds = new List<long>();
                     foreach (XmlNode wayChild in child.ChildNodes)
                     {
                         XmlAttribute nodeId = wayChild.Attributes["ref"];
                         if (nodeId != null && long.TryParse(nodeId.Value, _NumberStyle, _CultureInfo, out long parsedNodeId))
                         {
-                            way.Add(parsedNodeId);
+                            wayReference.NodeIds.Add(parsedNodeId);
+                        }
+                        else
+                        {
+                            XmlAttribute key = wayChild.Attributes["k"];
+                            XmlAttribute value = wayChild.Attributes["v"];
+                            if (key != null && value != null)
+                            {
+                                if (key.Value == "name" || (key.Value == "ref" && wayReference.Name == default))
+                                {
+                                    wayReference.Name = value.Value;
+                                }
+                            }
                         }
                     }
-                    ways.Add(parsedWayId, way);
+                    overpassData.Ways.Add(parsedWayId, wayReference);
                 }
             }
             if (child.Name == "relation")
@@ -477,7 +654,7 @@ public class OsmDataProcessor
                             if (value != null && relationId != null
                                 && long.TryParse(relationId.Value, _NumberStyle, _CultureInfo, out long parsedRelationId))
                             {
-                                names.Add(parsedRelationId, value.Value);
+                                overpassData.Names.Add(parsedRelationId, value.Value);
                                 relationReference.NameId = parsedRelationId;
                             }
                         }
@@ -492,78 +669,71 @@ public class OsmDataProcessor
                 }
                 if (relationReference.WayIds.Count > 0)
                 {
-                    relations.Add(relationReference);
+                    overpassData.Relations.Add(relationReference);
                 }
             }
         }
-
-        List<RelationData> relationDataList = new List<RelationData>();
-        foreach (RelationReference relationReference in relations)
-        {
-            RelationData relationData = new RelationData();
-            relationData.AdminLevel = relationReference.AdminLevel;
-            if (nodes.TryGetValue(relationReference.CenterId, out Vector2 center))
-            {
-                relationData.Center = center;
-            }
-            if (names.TryGetValue(relationReference.NameId, out string name))
-            {
-                relationData.Name = name;
-            }
-            relationData.Ways = new List<List<Vector2>>();
-            foreach (long wayId in relationReference.WayIds)
-            {
-                List<Vector2> way = new List<Vector2>();
-                foreach (long nodeId in ways[wayId])
-                {
-                    way.Add(nodes[nodeId]);
-                }
-                relationData.Ways.Add(way);
-            }
-            relationDataList.Add(relationData);
-        }
-        return relationDataList;
     }
 
-    private Shape GenerateShape(RelationData relation)
+    private Shape GenerateShape(List<WayData> ways, Vector2 center = default)
     {
-        if (relation.Ways == null || relation.Ways.Count == 0)
+        if (ways == null || ways.Count == 0)
         {
             return default;
         }
 
-        List<Vector2> points = new List<Vector2>();
-        List<Vector2> closestWay = relation.Ways[0];
+        WayData closestWay = ways[0];
+        Vector2 firstPoint = closestWay.Points[0];
         bool reverse = false;
+        bool endReached = false;
+        Shape shape = new Shape();
+        shape.Points = new List<Vector2>();
         Vector2 lastAddedPoint = Vector2.zero;
-
         do
         {
-            for (int i = 0; i < closestWay.Count; i++)
+            for (int i = 0; i < closestWay.Points.Count; i++)
             {
-                Vector2 point = closestWay[reverse ? closestWay.Count - 1 - i : i];
-                Vector2 shapePoint = point * ShapeScaler;
+                Vector2 point = closestWay.Points[reverse ? closestWay.Points.Count - 1 - i : i];
+                Vector2 shapePoint = point * (_TileResolution / 100.0f);
 
-                if (points.Count == 0 || (shapePoint - points[points.Count - 1]).sqrMagnitude > SqrMagnitudeDelta)
+                if (shape.Points.Count == 0 || (shapePoint - shape.Points[shape.Points.Count - 1]).sqrMagnitude > _SqrMagnitudeDelta)
                 {
-                    points.Add(shapePoint);
+                    if (endReached)
+                    {
+                        shape.Points.Insert(0, shapePoint);
+                    }
+                    else
+                    {
+                        shape.Points.Add(shapePoint);
+                    }
                     lastAddedPoint = point;
                 }
             }
-            relation.Ways.Remove(closestWay);
-            closestWay = FindClosestWay(relation, lastAddedPoint, out reverse);
-        }
-        while (closestWay != null);
+            ways.Remove(closestWay);
+            closestWay = FindClosestWay(ways, lastAddedPoint, out reverse);
 
-        Shape shape = new Shape();
-        shape.Points = points;
-        if (relation.Center == default)
+            if (ways.Count > 0 && closestWay.Points == null && !endReached)
+            {
+                //no next closest way was found while not all ways were used. this can be because:
+                //1. a relation consists of multiple areas that aren't connected -> not handled for now
+                //2. a relation contains some ways that aren't part of it's hull -> ignore them
+                //3. a road wasn't processed from it's starting point
+                // -> return to the first point that was processed and see if there are ways left to process
+                lastAddedPoint = firstPoint;
+                closestWay = FindClosestWay(ways, lastAddedPoint, out reverse);
+                endReached = true;
+            }
+        }
+        while (closestWay.Points != null);
+
+        //calculate shape center if no center point was specified (some mapObjects have center nodes, those have priority over geometrical center)
+        if (center == default)
         {
-            shape.Center = CalculateCenter(points);
+            shape.Center = CalculateCenter(shape.Points);
         }
         else
         {
-            shape.Center = relation.Center * ShapeScaler;
+            shape.Center = center * (_TileResolution / 100.0f);
         }
         return shape;
     }
@@ -578,21 +748,22 @@ public class OsmDataProcessor
         return center / points.Count;
     }
 
-    private List<Vector2> FindClosestWay(RelationData relation, Vector2 referencePoint, out bool reverse)
+    private WayData FindClosestWay(List<WayData> ways, Vector2 referencePoint, out bool reverse)
     {
         reverse = false;
 
-        if (relation.Ways == null || relation.Ways.Count == 0)
+        if (ways == null || ways.Count == 0)
         {
-            return null;
+            return default;
         }
 
-        List<Vector2> closestWay = relation.Ways[0];
-        Vector2 closestPoint = closestWay[0];
+        WayData closestWay = ways[0];
+        Vector2 closestPoint = closestWay.Points[0];
+
         float sqrDistanceToClosestPoint = (referencePoint - closestPoint).sqrMagnitude;
-        foreach (List<Vector2> way in relation.Ways)
+        foreach (WayData way in ways)
         {
-            Vector2 point = way[0];
+            Vector2 point = way.Points[0];
             float sqrDistance = (point - referencePoint).sqrMagnitude;
             if ( sqrDistance < sqrDistanceToClosestPoint )
             {
@@ -601,7 +772,7 @@ public class OsmDataProcessor
                 sqrDistanceToClosestPoint = sqrDistance;
             }
 
-            point = way[way.Count - 1];
+            point = way.Points[way.Points.Count - 1];
             sqrDistance = (point - referencePoint).sqrMagnitude;
             if ( sqrDistance < sqrDistanceToClosestPoint )
             {
@@ -611,11 +782,11 @@ public class OsmDataProcessor
             }
         }
 
-        if (sqrDistanceToClosestPoint < SqrMagnitudeLargestWayGap)
+        if (sqrDistanceToClosestPoint < _SqrMagnitudeLargestWayGap)
         {
             return closestWay;
         }
-        return null;
+        return default;
     }
 }
 

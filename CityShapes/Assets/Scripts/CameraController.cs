@@ -35,7 +35,7 @@ public class CameraController : MonoBehaviour
         _MaxCameraPosition = cityData.BackgroundTiles[cityData.BackgroundTiles.GetLength(0) - 1, cityData.BackgroundTiles.GetLength(1) - 1].Pos;
         _StartPosition = new Vector3(cityData.Shape.Center.x, cityData.Shape.Center.y, -10);
 
-        _MaxCameraSize = (cityData.BackgroundTiles.GetLength(1) - OsmDataProcessor.ExtraBackgroundTiles.x * 2) * 1.9f; //using random value to avoid maxSize getting too large
+        _MaxCameraSize = (cityData.BackgroundTiles.GetLength(1) - GameManager.Instance.OsmDataProcessor.NrExtraBackgroundTiles.x * 2) * 1.9f; //using random value to avoid maxSize getting too large
         _StartSize = _MaxCameraSize;
         _Camera.orthographicSize = _MaxCameraSize;
 

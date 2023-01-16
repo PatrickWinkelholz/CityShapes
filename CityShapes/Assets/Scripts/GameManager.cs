@@ -12,9 +12,11 @@ public class GameManager : MonoBehaviour
     public event System.Action GameRestartingEvent;
 
     [SerializeField] private CityCollection _CityCollection = null;
-    public GameMode GameMode { get => _GameMode; }
+    public OsmDataProcessor OsmDataProcessor => _OsmDataProcessor;
+    [SerializeField] private OsmDataProcessor _OsmDataProcessor = default;
+    public GameMode GameMode => _GameMode;
     [SerializeField] private GameMode _GameMode = null;
-    public CameraController Camera { get => _Camera; }
+    public CameraController Camera => _Camera;
     [SerializeField] private CameraController _Camera = null;
 
     [SerializeField] private City _CityPrefab = default;
@@ -23,7 +25,8 @@ public class GameManager : MonoBehaviour
     private List<SpriteRenderer> _BackgroundSprites = null;
     public City City => _City;
     private City _City = default;
-    public OsmDataProcessor OsmProcessor = new OsmDataProcessor();
+
+    public ObjectType MapObjectType = ObjectType.District;
 
     private void Awake()
     {
@@ -44,9 +47,9 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void DistrictPressed(District district)
+    public void MapObjectPressed(MapObject mapObject)
     {
-        _GameMode.DistrictPressed(district);
+        _GameMode.MapObjectPressed(mapObject);
     }
 
     public void RestartGame()
@@ -72,43 +75,36 @@ public class GameManager : MonoBehaviour
                 _CityCollection.Cities.Add(cityName, cityData);
             }
 
-            if (cityData.Districts != null && cityData.Districts.Count > 0)
+            if (_City)
             {
-                if (_City)
-                {
-                    Destroy(_City.gameObject);
-                }
-                if (_BackgroundSprites != null)
-                {
-                    foreach (SpriteRenderer sprite in _BackgroundSprites)
-                    {
-                        Destroy(sprite.gameObject);
-                    }
-                    _BackgroundSprites.Clear();
-                }
-
-                Debug.Log("creating city with " + cityData.Districts.Count + " districts and center " + cityData.Shape.Center);
-
-                _City = Instantiate(_CityPrefab);
-                _City.Initialize(cityData);
-
-                //_BackgroundSprites
-                _BackgroundSprites = new List<SpriteRenderer>();
-                foreach (TileData tileData in cityData.BackgroundTiles)
-                {
-                    SpriteRenderer sprite = Instantiate(_BackgroundSpritePrefab);
-                    sprite.sprite = tileData.Sprite;
-                    sprite.transform.position = tileData.Pos;
-                    _BackgroundSprites.Add(sprite);
-                }
-
-                RestartGame();
-                cityChangedCallback?.Invoke("success");
+                Destroy(_City.gameObject);
             }
-            else
+            if (_BackgroundSprites != null)
             {
-                cityChangedCallback?.Invoke("Can't generate cityData for " + cityName);
+                foreach (SpriteRenderer sprite in _BackgroundSprites)
+                {
+                    Destroy(sprite.gameObject);
+                }
+                _BackgroundSprites.Clear();
             }
+
+            Debug.Log("creating city with " + cityData.MapObjects.Count + " mapObjects and center " + cityData.Shape.Center);
+
+            _City = Instantiate(_CityPrefab);
+            _City.Initialize(cityData);
+
+            //_BackgroundSprites
+            _BackgroundSprites = new List<SpriteRenderer>();
+            foreach (TileData tileData in cityData.BackgroundTiles)
+            {
+                SpriteRenderer sprite = Instantiate(_BackgroundSpritePrefab);
+                sprite.sprite = tileData.Sprite;
+                sprite.transform.position = tileData.Pos;
+                _BackgroundSprites.Add(sprite);
+            }
+
+            RestartGame();
+            cityChangedCallback?.Invoke("success");
         };
 
         if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
@@ -117,7 +113,7 @@ public class GameManager : MonoBehaviour
         }
         else
         {
-            yield return OsmProcessor.GenerateCityData(cityName, boundingBox, callback);
+            yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
         }
     }
 

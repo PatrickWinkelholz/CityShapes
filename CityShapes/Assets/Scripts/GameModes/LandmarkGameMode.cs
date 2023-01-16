@@ -9,7 +9,7 @@ public class LandmarkGameMode : GameMode
     public GameObject Marker = null;
     public GameObject NewMarker = null;
 
-    public override void DistrictPressed(District district)
+    public override void MapObjectPressed(MapObject mapObject)
     {
     }
 

@@ -8,7 +8,7 @@ public abstract class GameMode : MonoBehaviour
     public string GameModeName { get => _GameModeName; }
     [SerializeField] private string _GameModeName = default;
 
-    public abstract void DistrictPressed(District district);
+    public abstract void MapObjectPressed(MapObject mapObject);
 
     protected void InvokeElementChangedEvent(string element)
     {

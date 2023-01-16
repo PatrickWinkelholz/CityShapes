@@ -4,19 +4,20 @@ using UnityEngine;
 
 public class City : MonoBehaviour
 {
-    [SerializeField] private District _DistrictPrefab = default;
-    public Pool<District> Districts = new Pool<District>();
+    [SerializeField] private List<MapObject> _MapObjectPrefabs = default;
+    public Pool<MapObject> MapObjects = new Pool<MapObject>();
 
     public void Initialize(CityData cityData)
     {
         gameObject.name = cityData.Name;
-        for ( int i = 0; i < cityData.Districts.Count; i++ )
+        for ( int i = 0; i < cityData.MapObjects.Count; i++ )
         {
-            DistrictData districtData = cityData.Districts[i];
-            District district = Instantiate(_DistrictPrefab, transform, true);
-            district.Initialize(districtData);
-            district.CityDataIndex = i;
-            Districts.Add(district);
+            MapObjectData mapObjectData = cityData.MapObjects[i];
+
+            MapObject mapObject = Instantiate(_MapObjectPrefabs.Find( x => x.Type == GameManager.Instance.MapObjectType), transform, true);
+            mapObject.Initialize(mapObjectData);
+            mapObject.CityDataIndex = i;
+            MapObjects.Add(mapObject);
         }
 
         Camera.main.GetComponent<CameraController>().Reset(cityData);

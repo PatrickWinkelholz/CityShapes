@@ -10,7 +10,7 @@ public struct Shape
 }
 
 [System.Serializable]
-public struct DistrictData
+public struct MapObjectData
 {
     public string Name;
     public string Region;
@@ -22,7 +22,7 @@ public struct CityData
 {
     public string Name;
     public Shape Shape;
-    public List<DistrictData> Districts;
+    public List<MapObjectData> MapObjects;
     public TileData[,] BackgroundTiles;
     //public Rect CameraBounds;
 }

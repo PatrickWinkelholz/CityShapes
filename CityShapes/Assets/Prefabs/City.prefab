@@ -27,6 +27,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -43,6 +44,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 55c70a25f10d9f547abd835b5bd1326d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _DistrictPrefab: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
-    type: 3}
-  _ScaleFactor: 1
+  _MapObjectPrefabs:
+  - {fileID: 5206651108582216081, guid: 626d0210f7d1db24f846f567ed075c67, type: 3}
+  - {fileID: 952733665175215116, guid: 952b6e07a7c56684f9457b4960298c4d, type: 3}

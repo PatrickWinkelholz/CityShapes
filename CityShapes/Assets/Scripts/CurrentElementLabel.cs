@@ -27,6 +27,6 @@ public class CurrentElementLabel : MonoBehaviour
 
     private void OnGameOver()
     {
-        _Text.text = "You solved " + GameManager.Instance.Score.ToString() + " out of " + GameManager.Instance.City.Districts.Count;
+        _Text.text = "You solved " + GameManager.Instance.Score.ToString() + " out of " + GameManager.Instance.City.MapObjects.Count;
     }
 }

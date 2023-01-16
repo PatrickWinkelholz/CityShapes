@@ -2,19 +2,23 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class District : MonoBehaviour
+public enum ObjectType
+{
+    District,
+    Road
+}
+
+public class MapObject : MonoBehaviour
 {
     public int CityDataIndex = 0;
 
     public Vector2 CenterPoint { get; private set; }
-    public string DistrictName { get; private set; }
+    public string MapObjectName { get; private set; }
     public bool Locked { get; set; }
-
-    //[SerializeField] private CityColorScheme _CityColorScheme = default;
-    [SerializeField] private PolygonCollider2D _Collider = default;
+    public ObjectType Type => _Type;
+    [SerializeField] private ObjectType _Type;
     [SerializeField] private MeshFilter _MeshFilter = default;
-    [SerializeField] private MeshRenderer _MeshRenderer = default;
-    [SerializeField] private LineRenderer _LineRenderer = default;
+    [SerializeField] private LineRenderer _OutlineRenderer = default;
 
     [SerializeField] private Color _InitialColor = default;
     [SerializeField] private Color _InitialOutlineColor = default;
@@ -28,29 +32,47 @@ public class District : MonoBehaviour
     [SerializeField] private Color _WrongColor = default;
     [SerializeField] private Color _WrongOutlineColor = default;
 
+    [Header("Road specific components")]
+    [SerializeField] private LineRenderer _LineRenderer = default;
+    [SerializeField] private MeshCollider _MeshCollider = default;
+
+    [Header("District specific components")]
+    [SerializeField] private MeshRenderer _MeshRenderer = default;
+    [SerializeField] private PolygonCollider2D _PolygonCollider = default;
+
     private bool _ClickStarted = false;
     private Vector2 _ClickedPosition = Vector2.zero;
 
-    public void Initialize(DistrictData districtData)
+    public void Initialize(MapObjectData mapObjectData)
     {
-        DistrictName = districtData.Name;
-        gameObject.name = DistrictName;
-        Vector2[] shapeArray = districtData.Shape.Points.ToArray();
-        _Collider.points = shapeArray;
-        _MeshFilter.mesh = _Collider.CreateMesh(false, false);
+        MapObjectName = mapObjectData.Name;
+        gameObject.name = MapObjectName;
 
-        //CityColorScheme.ColorEntry colorEntry = _CityColorScheme.RegionColors.Find(x => x.Region.Equals(districtData.Region));
-        SetColors(_InitialColor, _InitialOutlineColor);
-
-        //outline + calculate center
-        List<Vector3> linePositions = new List<Vector3>();
-        foreach (Vector2 point in districtData.Shape.Points)
+        List<Vector3> shapePoints = new List<Vector3>();
+        foreach (Vector2 point in mapObjectData.Shape.Points)
         {
-            linePositions.Add(point);
+            shapePoints.Add(point);
         }
-        CenterPoint = districtData.Shape.Center;
-        _LineRenderer.positionCount = linePositions.Count;
-        _LineRenderer.SetPositions(linePositions.ToArray());
+        CenterPoint = mapObjectData.Shape.Center;
+        _OutlineRenderer.positionCount = shapePoints.Count;
+        _OutlineRenderer.SetPositions(shapePoints.ToArray());
+
+        if (Type == ObjectType.Road)
+        {
+            _LineRenderer.positionCount = shapePoints.Count;
+            _LineRenderer.SetPositions(shapePoints.ToArray());
+
+            _MeshFilter.mesh = new Mesh();
+            _OutlineRenderer.BakeMesh(_MeshFilter.mesh);
+            _MeshCollider.sharedMesh = _MeshFilter.mesh;
+        }
+        else
+        {
+            _PolygonCollider.points = mapObjectData.Shape.Points.ToArray();
+            _MeshFilter.mesh = _PolygonCollider.CreateMesh(false, false);
+        }
+
+        SetColors(_InitialColor, _InitialOutlineColor);
     }
 
     private void OnMouseUpAsButton()
@@ -72,7 +94,7 @@ public class District : MonoBehaviour
         }
 #endif
         CancelClick();
-        GameManager.Instance.DistrictPressed(this);
+        GameManager.Instance.MapObjectPressed(this);
     }
 
     private void OnMouseDown()
@@ -129,23 +151,39 @@ public class District : MonoBehaviour
         if (correct)
         {
             SetColors(_CorrectColor, _CorrectOutlineColor);
+            transform.position += new Vector3(0, 0, 0.3f);
         }
         else
         {
             SetColors(_WrongColor, _WrongOutlineColor);
+            transform.position += new Vector3(0, 0, 0.6f);
         }
     }
 
     public void Reset()
     {
         Locked = false;
+        Vector3 pos = transform.position;
+        pos.z = 0;
+        transform.position = pos;
         SetColors(_InitialColor, _InitialOutlineColor);
     }
 
     private void SetColors(Color color, Color outlineColor)
     {
-        _MeshRenderer.material.color = color;
-        _LineRenderer.startColor = outlineColor;
-        _LineRenderer.endColor = outlineColor;
+        if (_MeshRenderer)
+        {
+            _MeshRenderer.material.color = color;
+        }
+        else if (_LineRenderer)
+        {
+            _LineRenderer.startColor = color;
+            _LineRenderer.endColor = color;
+        }
+        if (_OutlineRenderer)
+        {
+            _OutlineRenderer.startColor = outlineColor;
+            _OutlineRenderer.endColor = outlineColor;
+        }
     }
 }
