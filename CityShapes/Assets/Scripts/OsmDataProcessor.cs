@@ -76,6 +76,7 @@ public class OsmDataProcessor : MonoBehaviour
     [SerializeField] private Vector2Int _NrExtraBackgroundTiles = new Vector2Int(1, 4);
     [SerializeField] private float _BackgroundTileZOffset = 20.0f;
     [SerializeField] private int _Zoom = 13;
+    [SerializeField] private float _MinRoadBoundaryMagnitude = 0.1f;
 
     static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
     static System.Globalization.NumberStyles _NumberStyle = System.Globalization.NumberStyles.Number;
@@ -373,7 +374,39 @@ public class OsmDataProcessor : MonoBehaviour
                 List<WayData> waysWithSameName = ways.FindAll(w => w.Name == road.Name);
                 road.Shape = GenerateShape(waysWithSameName);
 
-                roads.Add(road);
+                if (road.Shape.Points.Count > 0)
+                {
+                    //discard road if it's too small
+                    Rect roadBounds = new Rect(road.Shape.Points[0].x, road.Shape.Points[0].y, road.Shape.Points[0].x, road.Shape.Points[0].y);
+                    foreach (Vector2 point in road.Shape.Points)
+                    {
+                        if (point.x < roadBounds.x)
+                        {
+                            roadBounds.x = point.x;
+                        }
+                        if (point.x > roadBounds.width)
+                        {
+                            roadBounds.width = point.x;
+                        }
+                        if (point.y < roadBounds.y)
+                        {
+                            roadBounds.y = point.y;
+                        }
+                        if (point.y > roadBounds.height)
+                        {
+                            roadBounds.height = point.y;
+                        }
+                    }
+                    if (Vector2.SqrMagnitude(roadBounds.size - roadBounds.position) > _MinRoadBoundaryMagnitude)
+                    {
+                        roads.Add(road);
+                        //Debug.Log("PASSED: " + road.Name + ": " + Vector2.SqrMagnitude(roadBounds.size - roadBounds.position));
+                    }
+                    //else
+                    //{
+                    //    Debug.Log("DISCARDED: " + road.Name + ": " + Vector2.SqrMagnitude(roadBounds.size - roadBounds.position));
+                    //}
+                }
                 ways.RemoveAll(w => w.Name == road.Name);
 
             } while (ways.Count > 0);

@@ -26,6 +26,7 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private GameObject _LeaderboardPanel = null;
     [SerializeField] private GameObject _GameModePanel = null;
     [SerializeField] private GameObject _LoginPanel = null;
+    [SerializeField] private GameObject _CreditsPanel = null;
     [SerializeField] private GameObject _SearchResultEntryPrefab = default;
     [SerializeField] private GameObject _LeaderboardEntryPrefab = default;
     [SerializeField] private Transform _SearchResultViewportContent = default;
@@ -36,7 +37,6 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private Button _GameModeBackButton = default;
     [SerializeField] private TMPro.TextMeshProUGUI _TimeIndicator = default;
     [SerializeField] private GameObject _PauseButton = default;
-    [SerializeField] private TMPro.TextMeshProUGUI _ModeButtonText = default;
 
     private Vector3 _NotPausedPosition = default;
     private Vector3 _PausedPosition = Vector3.zero;
@@ -264,6 +264,11 @@ public class PausePanel : MonoBehaviour
     public void OnChangeCityPressed()
     {
         ChangePanel(_CitySearchPanel);
+    }
+
+    public void OnCreditsPressed()
+    {
+        ChangePanel(_CreditsPanel);
     }
 
     public void TrySetNewHighscore()

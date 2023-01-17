@@ -122,7 +122,7 @@ LineRenderer:
       m_NumColorKeys: 2
       m_NumAlphaKeys: 2
     numCornerVertices: 0
-    numCapVertices: 0
+    numCapVertices: 4
     alignment: 0
     textureMode: 0
     shadowBias: 0.5
@@ -214,17 +214,17 @@ PrefabInstance:
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: _PressedColor.b
-      value: 0.6509804
+      value: 0.972549
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: _PressedColor.g
-      value: 0.19985098
+      value: 0.09803922
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: _PressedColor.r
-      value: 0.5034412
+      value: 0.5882353
       objectReference: {fileID: 0}
     - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
@@ -257,10 +257,35 @@ PrefabInstance:
       propertyPath: _PressedOutlineColor.a
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _PressedOutlineColor.b
+      value: 0.9529412
+      objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _PressedOutlineColor.g
+      value: 0.38039216
+      objectReference: {fileID: 0}
+    - target: {fileID: 786414726323264949, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: _PressedOutlineColor.r
+      value: 0.69411767
+      objectReference: {fileID: 0}
+    - target: {fileID: 1787164834247029112, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: m_Parameters.numCapVertices
+      value: 4
+      objectReference: {fileID: 0}
     - target: {fileID: 1787164834247029112, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
       propertyPath: m_Parameters.widthMultiplier
       value: 0.11
+      objectReference: {fileID: 0}
+    - target: {fileID: 1787164834247029112, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
+        type: 3}
+      propertyPath: m_Parameters.numCornerVertices
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 2619318265998701369, guid: 627b7dbd75c2f644fb26c8fb761f4c58,
         type: 3}
