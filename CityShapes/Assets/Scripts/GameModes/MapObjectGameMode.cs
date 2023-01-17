@@ -62,7 +62,7 @@ public class MapObjectGameMode : GameMode
     {
         if (_City.MapObjects.Empty())
         {
-            GameManager.Instance.EndGame();
+            GameManager.Instance.EndGame(true);
         }
         else
         {

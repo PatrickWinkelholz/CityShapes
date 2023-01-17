@@ -12,11 +12,12 @@ public class PausePanel : MonoBehaviour
 
     [SerializeField] private float _lerpSpeed = default;
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreDisplay = null;
-    [SerializeField] private TMPro.TextMeshProUGUI _HighScoreDisplay = null;
+    [SerializeField] private TMPro.TextMeshProUGUI _ScoreDisplayLabel = null;
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreTimeDisplay = null;
+    [SerializeField] private TMPro.TextMeshProUGUI _HighScoreDisplay = null;
     [SerializeField] private TMPro.TextMeshProUGUI _HighScoreTimeDisplay = null;
-    [SerializeField] private Button _MapObjectsButton = null;
-    [SerializeField] private Button _LandmarksButton = null;
+    //[SerializeField] private Button _MapObjectsButton = null;
+    //[SerializeField] private Button _LandmarksButton = null;
     [SerializeField] private TMPro.TMP_InputField _SearchInputField = null;
     [SerializeField] private TMPro.TMP_InputField _UserNameInputField = null;
     [SerializeField] private TMPro.TMP_InputField _PasswordInputField = null;
@@ -37,18 +38,27 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private Button _GameModeBackButton = default;
     [SerializeField] private TMPro.TextMeshProUGUI _TimeIndicator = default;
     [SerializeField] private GameObject _PauseButton = default;
+    [SerializeField] private GameObject _CurrentElementLabel = default;
+    [SerializeField] private TMPro.TextMeshProUGUI _LeaderboardLabel = default;
+    [SerializeField] private ParticleSystem _ConfettiParticle = default;
 
     private Vector3 _NotPausedPosition = default;
     private Vector3 _PausedPosition = Vector3.zero;
     private Vector3 _TargetPosition = default;
     private GameObject _CurrentPanel = default;
-    private int _HighScore = 0;
-    private float _HighScoreTime = 0.0f;
-    private Dictionary<ObjectType, string> _modeAbbreviations = new Dictionary<ObjectType, string>()
+    private int _PersonalBestScore = 0;
+    private float _PersonalBestTime = 0.0f;   
+    private Dictionary<ObjectType, string> _ModeAbbreviations = new Dictionary<ObjectType, string>()
     { 
         { ObjectType.District, "Dst" }, 
         { ObjectType.Road, "Rod" } 
     };
+    private Dictionary<ObjectType, string> _ModeNames = new Dictionary<ObjectType, string>()
+    {
+        { ObjectType.District, "Districts" },
+        { ObjectType.Road, "Roads" }
+    };
+    private bool _NewTopscore = false;
 
     private void Awake()
     {
@@ -60,8 +70,6 @@ public class PausePanel : MonoBehaviour
     private void Start()
     {
         UpdateScoreDisplay();
-
-
     }
 
     private void OnEnable()
@@ -83,18 +91,29 @@ public class PausePanel : MonoBehaviour
         _LoadingText.text = status;
     }
 
-    private void OnGameOver()
+    private void OnGameOver(bool submitScore)
     {
-        TrySetNewHighscore();
-        TogglePause();
+        if (submitScore)
+        {
+            TrySetNewHighscore();
+        }
     }
 
     public void TogglePause()
     {
+        if (GameManager.Instance.City == null)
+        {
+            return;
+        }
+
         _Paused = !_Paused;
         _PauseButton.SetActive(!_Paused);
+        _CurrentElementLabel.SetActive(!_Paused);
         _TimeIndicator.gameObject.SetActive(!_Paused);
-        UpdateScoreDisplay();
+        if (_CurrentPanel != _LoginPanel)
+        {
+            ChangePanel(_MenuContentPanel);
+        }
         GameManager.Instance.Camera.Blocked = _Paused;
         _TargetPosition = _Paused ? _PausedPosition : _NotPausedPosition;
     }
@@ -112,32 +131,89 @@ public class PausePanel : MonoBehaviour
         ChangePanel(_MenuContentPanel);
         _CitySearchBackButton.gameObject.SetActive(true);
         _GameModeBackButton.gameObject.SetActive(true);
+        if (_NewTopscore)
+        {
+            ToggleNewTopscore(false, false);
+        }
         TogglePause();
     }
 
     private void UpdateScoreDisplay()
     {
-        _ScoreDisplay.text = GameManager.Instance.Score.ToString();
-        _ScoreTimeDisplay.text = "(" + Utils.FormatTime(GameManager.Instance.Timer) + ")";
-        if (_HighScore == 0)
+        if (_NewTopscore)
         {
-            _HighScoreDisplay.text = "-";
-            _HighScoreTimeDisplay.text = "";
+            Color.RGBToHSV(_ScoreDisplayLabel.colorGradient.topLeft, out float h, out float s, out float v);
+            h += Time.deltaTime * 0.4f;
+            if (h > 1.0f) h -= 1.0f;
+            float h2 = h + 0.25f;
+            if (h2 > 1.0f) h2 -= 1.0f;
+            float h3 = h + 0.5f;
+            if (h3 > 1.0f) h3 -= 1.0f;
+            float h4 = h + 0.75f;
+            if (h4 > 1.0f) h4 -= 1.0f;
+
+            _ScoreDisplayLabel.colorGradient =
+            new TMPro.VertexGradient(
+                Color.HSVToRGB(h, s, v),
+                Color.HSVToRGB(h2, s, v),
+                Color.HSVToRGB(h4, s, v),
+                Color.HSVToRGB(h3, s, v)
+                );
+        }
+
+        if (_Paused)
+        {
+            _ScoreDisplay.text = GameManager.Instance.Score.ToString();
+            _ScoreTimeDisplay.text = "(" + Utils.FormatTime(GameManager.Instance.Timer) + ")";
+
+            if (_PersonalBestScore == 0)
+            {
+                _HighScoreDisplay.text = "-";
+                _HighScoreTimeDisplay.text = "";
+            }
+            else
+            {
+                _HighScoreDisplay.text = _PersonalBestScore.ToString();
+                _HighScoreTimeDisplay.text = "(" + Utils.FormatTime(_PersonalBestTime) + ")";
+            }
+        }
+    }
+
+    private void ToggleNewTopscore(bool newPersonalBest, bool newHighscore)
+    {
+        if (newPersonalBest || newHighscore)
+        {
+            _NewTopscore = true;
+            _ConfettiParticle.Play();
+            _HighScoreDisplay.transform.parent.parent.gameObject.SetActive(false);
+            _ScoreDisplayLabel.text = newHighscore ? "NEW HIGHSCORE!" : "NEW PERSONAL BEST!";
+            _ScoreDisplayLabel.fontSize = 14;
+            _ScoreDisplayLabel.fontStyle = TMPro.FontStyles.Bold;
+            _ScoreDisplayLabel.enableVertexGradient = true;
         }
         else
         {
-            _HighScoreDisplay.text = _HighScore.ToString();
-            _HighScoreTimeDisplay.text = "(" + Utils.FormatTime(_HighScoreTime) + ")";
+            _NewTopscore = false;
+            _ConfettiParticle.Stop();
+            _HighScoreDisplay.transform.parent.parent.gameObject.SetActive(true);
+            _ScoreDisplayLabel.text = "your score:";
+            _ScoreDisplayLabel.fontSize = 10;
+            _ScoreDisplayLabel.fontStyle = TMPro.FontStyles.Normal;
+            _ScoreDisplayLabel.enableVertexGradient = false;
+            _ScoreDisplayLabel.color = Color.white;
         }
     }
 
     private IEnumerator SubmitScoreRoutine()
     {
+        _LoadingPanel.gameObject.SetActive(true);
+        _LoadingText.text = "submitting score...";
+
         WWWForm form = new WWWForm();
         form.AddField("submitScore", GameManager.Instance.Score);
         form.AddField("time", GameManager.Instance.Timer.ToString());
         form.AddField("cityName", GameManager.Instance.City.gameObject.name);
-        form.AddField("mode", _modeAbbreviations[GameManager.Instance.MapObjectType]);
+        form.AddField("mode", _ModeAbbreviations[GameManager.Instance.MapObjectType]);
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
 
@@ -145,41 +221,31 @@ public class PausePanel : MonoBehaviour
         {
             if (result == "success")
             {
-                StartCoroutine(ResetUserData());
+                StartCoroutine(ObtainLeaderboard(true, ()=> { if (!_Paused) TogglePause(); }));
             }
             else
             {
                 _ErrorText.text = result;
+                _LoadingPanel.gameObject.SetActive(false);
             }
         });
     }
 
-    private IEnumerator ResetUserData()
-    {
-        _HighScore = 0;
-        _HighScoreTime = 0.0f;
-        if (GameManager.Instance.City != null)
-        {
-            yield return ObtainLeaderboard();
-        }
-        UpdateScoreDisplay();
-    }
+    //public void OnMapObjectsPressed()
+    //{
+    //    _LandmarksButton.interactable = true;
+    //    _MapObjectsButton.interactable = false;
 
-    public void OnMapObjectsPressed()
-    {
-        _LandmarksButton.interactable = true;
-        _MapObjectsButton.interactable = false;
+    //    UpdateScoreDisplay();
+    //}
 
-        UpdateScoreDisplay();
-    }
+    //public void OnLandmarksPressed()
+    //{
+    //    _LandmarksButton.interactable = false;
+    //    _MapObjectsButton.interactable = true;
 
-    public void OnLandmarksPressed()
-    {
-        _LandmarksButton.interactable = false;
-        _MapObjectsButton.interactable = true;
-
-        UpdateScoreDisplay();
-    }
+    //    UpdateScoreDisplay();
+    //}
 
     public void OnLeaderboardPressed()
     {
@@ -190,6 +256,13 @@ public class PausePanel : MonoBehaviour
     {
         _UserNameInputField.text = "";
         _PasswordInputField.text = "";
+        _PersonalBestScore = 0;
+        _PersonalBestTime = 0;
+        if (_NewTopscore)
+        {
+            ToggleNewTopscore(false, false);
+        }
+        GameManager.Instance.EndGame(false);
         ChangePanel(_LoginPanel);
     }
 
@@ -242,12 +315,19 @@ public class PausePanel : MonoBehaviour
         yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
         {
             _LoadingPanel.gameObject.SetActive(false);
-            StartCoroutine(ResetUserData());
 
             //ChangePanel(_CitySearchPanel);
             if (result == "success")
             {
-                ChangePanel(_GameModePanel);
+                if (GameManager.Instance.City != null)
+                {
+                    ChangePanel(_MenuContentPanel);
+                    StartCoroutine(ObtainLeaderboard());
+                }
+                else
+                {
+                    ChangePanel(_GameModePanel);
+                }
             }
             else
             {
@@ -273,12 +353,18 @@ public class PausePanel : MonoBehaviour
 
     public void TrySetNewHighscore()
     {
-        if (GameManager.Instance.Score > _HighScore ||
-            (GameManager.Instance.Score == _HighScore && GameManager.Instance.Timer < _HighScoreTime))
+        int score = GameManager.Instance.Score;
+        float time = GameManager.Instance.Timer;
+        if (score > _PersonalBestScore || (score == _PersonalBestScore && time < _PersonalBestTime))
         {
-            _HighScore = GameManager.Instance.Score;
-            _HighScoreTime = GameManager.Instance.Timer;
             StartCoroutine(SubmitScoreRoutine());
+        }
+        else
+        {
+            if (!_Paused)
+            {
+                TogglePause();
+            }
         }
     }
 
@@ -289,7 +375,7 @@ public class PausePanel : MonoBehaviour
 
     public void OnContactPressed()
     {
-        Application.OpenURL("mailto:patrick.winkelholz@gmail.com?subject=Leipzig%20App");
+        Application.OpenURL("mailto:patrick.winkelholz@gmail.com?subject=CityShapes%20App");
     }
 
     public void OnRestartPressed()
@@ -313,8 +399,8 @@ public class PausePanel : MonoBehaviour
                 _ErrorText.text = result;
             }
         });
+        yield return ObtainLeaderboard();
         _LoadingPanel.gameObject.SetActive(false);
-        yield return ResetUserData();
     }
 
     private void StartGenerateCityRoutine(string cityName, string boundingBox)
@@ -336,7 +422,7 @@ public class PausePanel : MonoBehaviour
             
             if (GameManager.Instance.City != null)
             {
-                StartCoroutine(ResetUserData());
+                StartCoroutine(ObtainLeaderboard());
             }
             else
             {
@@ -384,28 +470,45 @@ public class PausePanel : MonoBehaviour
         _LoadingPanel.gameObject.SetActive(false);
     }
 
-    private IEnumerator ObtainLeaderboard()
+    private IEnumerator ObtainLeaderboard(bool newPersonalBest = false, System.Action callback = default)
     {
         for (int i = 0; i < _LeaderboardViewportContent.childCount; i++)
         {
             Destroy(_LeaderboardViewportContent.GetChild(i).gameObject);
         }
 
+        if (GameManager.Instance.City == null)
+        {
+            callback?.Invoke();
+            yield break;
+        }
+
+        _LoadingPanel.gameObject.SetActive(true);
+        _LoadingText.text = "obtaining leaderboard...";
+        _LeaderboardLabel.text = GameManager.Instance.City.name.Split(',')[0] + " - " + _ModeNames[GameManager.Instance.MapObjectType];
         WWWForm form = new WWWForm();
         form.AddField("readLeaderboard", 1);
         form.AddField("cityName", GameManager.Instance.City.name);
-        form.AddField("mode", _modeAbbreviations[GameManager.Instance.MapObjectType]);
+        form.AddField("mode", _ModeAbbreviations[GameManager.Instance.MapObjectType]);
         yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result =>
         {
             string[] entries = result.Split('\n');
+            bool newHighscore = false;
             if (entries.Length > 0 && entries[0] == "results:")
             {
+                if (!newPersonalBest)
+                {
+                    _PersonalBestScore = 0;
+                    _PersonalBestTime = 0;
+                }
+
                 if (entries.Length == 2)
                 {
                     GameObject entry = Instantiate(_LeaderboardEntryPrefab, _LeaderboardViewportContent);
                     TMPro.TextMeshProUGUI text = entry.GetComponentInChildren<TMPro.TextMeshProUGUI>();
                     text.text = "no entries!";
                 }
+                bool processedHighscore = false;
                 foreach (string s in entries)
                 {
                     string[] values = s.Split('\t');
@@ -417,11 +520,19 @@ public class PausePanel : MonoBehaviour
                         textElements[1].text = values[1];
                         textElements[2].text = "(" + Utils.FormatTime(values[2]) + ")";
 
+                        int score = int.Parse(values[1]);
+                        float time = float.Parse(values[2]);
+
                         if (values[0] == _UserNameInputField.text)
                         {
-                            _HighScore = int.Parse(values[1]);
-                            _HighScoreTime = float.Parse(values[2]);
+                            if (newPersonalBest && !processedHighscore)
+                            {
+                                newHighscore = true;
+                            }
+                            _PersonalBestScore = score;
+                            _PersonalBestTime = time;
                         }
+                        processedHighscore = true;
                     }
                 }
             }
@@ -429,6 +540,9 @@ public class PausePanel : MonoBehaviour
             {
                 _ErrorText.text = result;
             }
+            ToggleNewTopscore(newPersonalBest, newHighscore);
+            _LoadingPanel.gameObject.SetActive(false);
+            callback?.Invoke();
         });
     }
 
@@ -436,9 +550,6 @@ public class PausePanel : MonoBehaviour
     {
         transform.position = Vector3.Lerp(transform.position, _TargetPosition, Time.deltaTime * _lerpSpeed);
         _TimeIndicator.text = Utils.FormatTime(GameManager.Instance.Timer);
-        if (_Paused && !GameManager.Instance.GameOver)
-        {
-            UpdateScoreDisplay();
-        }
+        UpdateScoreDisplay();
     }
 }

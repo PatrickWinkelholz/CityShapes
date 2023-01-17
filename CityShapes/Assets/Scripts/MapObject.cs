@@ -100,7 +100,7 @@ public class MapObject : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (Locked || PausePanel.Instance.Paused)
+        if (Locked || PausePanel.Instance.Paused || GameManager.Instance.GameOver)
         {
             return;
         }

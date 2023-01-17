@@ -25,8 +25,15 @@ public class CurrentElementLabel : MonoBehaviour
         _Image.enabled = element != "";
     }
 
-    private void OnGameOver()
+    private void OnGameOver(bool submitScore)
     {
-        _Text.text = "You solved " + GameManager.Instance.Score.ToString() + " out of " + GameManager.Instance.City.MapObjects.Count;
+        if (submitScore)
+        {
+            _Text.text = "You solved " + GameManager.Instance.Score.ToString() + " out of " + GameManager.Instance.City.MapObjects.Count;
+        }
+        else
+        {
+            _Text.text = "Please login";
+        }
     }
 }

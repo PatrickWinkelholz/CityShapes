@@ -8,7 +8,7 @@ public class GameManager : MonoBehaviour
     public int Score;
     public float Timer { get; private set; }
     public bool GameOver { get; private set; }
-    public event System.Action GameOverEvent;
+    public event System.Action<bool> GameOverEvent;
     public event System.Action GameRestartingEvent;
 
     //[SerializeField] private CityCollection _CityCollection = null;
@@ -141,9 +141,9 @@ public class GameManager : MonoBehaviour
         //}
     }
 
-    public void EndGame()
+    public void EndGame(bool submitScore)
     {
-        GameOverEvent?.Invoke();
+        GameOverEvent?.Invoke(submitScore);
         GameOver = true;
     }
 }
