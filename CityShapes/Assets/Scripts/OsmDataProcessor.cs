@@ -79,8 +79,6 @@ public class OsmDataProcessor : MonoBehaviour
     [SerializeField] private float _MinRoadBoundaryMagnitude = 0.1f;
 
     static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
-    static System.Globalization.NumberStyles _NumberStyle = System.Globalization.NumberStyles.Number;
-    static System.Globalization.CultureInfo _CultureInfo = System.Globalization.CultureInfo.InvariantCulture;
 
     private string[] _CityBbox = default;
     private int _CityAdminLevel = default;
@@ -114,7 +112,7 @@ public class OsmDataProcessor : MonoBehaviour
             foreach (XmlNode searchResult in searchResults.ChildNodes)
             {
                 XmlAttribute addressRank = searchResult.Attributes["address_rank"];
-                if (addressRank != null && int.TryParse(addressRank.Value, _NumberStyle, _CultureInfo, out int rank)
+                if (addressRank != null && Utils.TryParse(addressRank.Value, out int rank)
                     && rank >= 13 && rank <= 16)
                 {
                     XmlAttribute displayName = searchResult.Attributes["display_name"];
@@ -451,26 +449,27 @@ public class OsmDataProcessor : MonoBehaviour
     private IEnumerator GenerateBackgroundTiles(System.Action<TileData[,]> callback)
     {
         //calculate tiles
-        float minLat = float.Parse(_CityBbox[0]);
-        float maxLat = float.Parse(_CityBbox[1]);
-        float minLon = float.Parse(_CityBbox[2]);
-        float maxLon = float.Parse(_CityBbox[3]);
+        Utils.TryParse(_CityBbox[0], out float minLat);
+        Utils.TryParse(_CityBbox[1], out float maxLat);
+        Utils.TryParse(_CityBbox[2], out float minLon);
+        Utils.TryParse(_CityBbox[3], out float maxLon);
 
         float centerLat = minLat + (maxLat - minLat) / 2.0f;
         float centerLon = minLon + (maxLon - minLon) / 2.0f;
 
         CalculateTiles(minLat, minLon, out float minXTile, out float minYTile);
         CalculateTiles(maxLat, maxLon, out float maxXTile, out float maxYTile);
-        
+
+        Vector2Int minTiles = new Vector2Int((int)minXTile, (int)minYTile);
+        Vector2Int maxTiles = new Vector2Int((int)maxXTile, (int)maxYTile);
+
         //amount of tiles required to cover the entire city
         Vector2Int necessaryTiles = new Vector2Int(
-            Mathf.Abs((int)maxXTile - (int)minXTile) + 1, 
-            Mathf.Abs((int)maxYTile - (int)minYTile) + 1);
+            Mathf.Abs(maxTiles.x - minTiles.x) + 1, 
+            Mathf.Abs(maxTiles.y - minTiles.y) + 1);
 
         //total tiles, including extra tiles for more space
-        Vector2Int totalTiles = necessaryTiles + _NrExtraBackgroundTiles * 2; // new Vector2Int(
-            //necessaryTiles.x + _NrExtraBackgroundTiles.x * 2,
-            //necessaryTiles.y + _NrExtraBackgroundTiles.y * 2);
+        Vector2Int totalTiles = necessaryTiles + _NrExtraBackgroundTiles * 2;
 
         TileData[,] tiles = new TileData[totalTiles.y, totalTiles.x];
 
@@ -480,8 +479,8 @@ public class OsmDataProcessor : MonoBehaviour
             for (int x = 0; x < totalTiles.x; x++)
             {
                 Vector2Int tileCords = new Vector2Int(
-                    (int)Mathf.Min(minXTile, maxXTile) - _NrExtraBackgroundTiles.x + x,
-                    (int)Mathf.Min(minYTile, maxYTile) - _NrExtraBackgroundTiles.y + y);
+                    Mathf.Min(minTiles.x, maxTiles.x) - _NrExtraBackgroundTiles.x + x,
+                    Mathf.Min(minTiles.y, maxTiles.y) - _NrExtraBackgroundTiles.y + y);
                 StartCoroutine(RequestTile(tileCords.x, tileCords.y, x, y, (destX, destY, tileData) => 
                 {
                     tiles[destY, destX] = tileData;
@@ -490,7 +489,7 @@ public class OsmDataProcessor : MonoBehaviour
             }
         }
 
-        while(processedTiles < totalTiles.x * totalTiles.y)
+        while (processedTiles < totalTiles.x * totalTiles.y)
         {
             yield return null;
         }
@@ -602,9 +601,9 @@ public class OsmDataProcessor : MonoBehaviour
                 XmlAttribute id = child.Attributes["id"];
 
                 if (lat != null && lon != null && id != null
-                    && float.TryParse(lat.Value, _NumberStyle, _CultureInfo, out float parsedLat)
-                    && float.TryParse(lon.Value, _NumberStyle, _CultureInfo, out float parsedLon)
-                    && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
+                    && Utils.TryParse(lat.Value, out float parsedLat)
+                    && Utils.TryParse(lon.Value, out float parsedLon)
+                    && Utils.TryParse(id.Value, out long parsedId))
                 {
                     CalculateTiles(parsedLat, parsedLon, out float x, out float y);
 
@@ -626,14 +625,14 @@ public class OsmDataProcessor : MonoBehaviour
             if (child.Name == "way")
             {
                 XmlAttribute wayId = child.Attributes["id"];
-                if (long.TryParse(wayId.Value, _NumberStyle, _CultureInfo, out long parsedWayId))
+                if (Utils.TryParse(wayId.Value, out long parsedWayId))
                 {
                     WayReference wayReference = new WayReference();
                     wayReference.NodeIds = new List<long>();
                     foreach (XmlNode wayChild in child.ChildNodes)
                     {
                         XmlAttribute nodeId = wayChild.Attributes["ref"];
-                        if (nodeId != null && long.TryParse(nodeId.Value, _NumberStyle, _CultureInfo, out long parsedNodeId))
+                        if (nodeId != null && Utils.TryParse(nodeId.Value, out long parsedNodeId))
                         {
                             wayReference.NodeIds.Add(parsedNodeId);
                         }
@@ -661,8 +660,7 @@ public class OsmDataProcessor : MonoBehaviour
                 {
                     XmlAttribute type = relationChild.Attributes["type"];
                     XmlAttribute id = relationChild.Attributes["ref"];
-                    if (id != null && type != null
-                        && long.TryParse(id.Value, _NumberStyle, _CultureInfo, out long parsedId))
+                    if (id != null && type != null && Utils.TryParse(id.Value, out long parsedId))
                     {
                         if (type.Value == "node")
                         {
@@ -690,7 +688,7 @@ public class OsmDataProcessor : MonoBehaviour
                             //save label name as fallback name in case there is no admin_center/label node available
                             XmlAttribute relationId = child.Attributes["id"];
                             if (value != null && relationId != null
-                                && long.TryParse(relationId.Value, _NumberStyle, _CultureInfo, out long parsedRelationId))
+                                && Utils.TryParse(relationId.Value, out long parsedRelationId))
                             {
                                 overpassData.Names.Add(parsedRelationId, value.Value);
                                 relationReference.NameId = parsedRelationId;
@@ -698,7 +696,7 @@ public class OsmDataProcessor : MonoBehaviour
                         }
                         if (key != null && key.Value == "admin_level")
                         {
-                            if (value != null && int.TryParse(value.Value, _NumberStyle, _CultureInfo, out int parsedAdminLevel))
+                            if (value != null && Utils.TryParse(value.Value, out int parsedAdminLevel))
                             {
                                 relationReference.AdminLevel = parsedAdminLevel;
                             }

@@ -5,6 +5,24 @@ using UnityEngine.Networking;
 
 public class Utils
 {
+    public readonly static System.Globalization.NumberStyles NumberStyle = System.Globalization.NumberStyles.Number;
+    public readonly static System.Globalization.CultureInfo CultureInfo = System.Globalization.CultureInfo.InvariantCulture;
+
+    public static bool TryParse(string s, out int i)
+    {
+        return int.TryParse(s, NumberStyle, CultureInfo, out i);
+    }
+
+    public static bool TryParse(string s, out float f)
+    {
+        return float.TryParse(s, NumberStyle, CultureInfo, out f);
+    }
+
+    public static bool TryParse(string s, out long l)
+    {
+        return long.TryParse(s, NumberStyle, CultureInfo, out l);
+    }
+
     public static string FormatTime(float seconds)
     {
         return System.TimeSpan.FromSeconds(seconds).ToString("mm\\:ss\\:ff");
@@ -12,7 +30,7 @@ public class Utils
 
     public static string FormatTime(string seconds)
     {
-        if (float.TryParse(seconds, System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out float secondsf))
+        if (TryParse(seconds, out float secondsf))
         {
             return FormatTime(secondsf);
         }

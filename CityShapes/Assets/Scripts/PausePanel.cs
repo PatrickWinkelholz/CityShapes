@@ -520,10 +520,9 @@ public class PausePanel : MonoBehaviour
                         textElements[1].text = values[1];
                         textElements[2].text = "(" + Utils.FormatTime(values[2]) + ")";
 
-                        int score = int.Parse(values[1]);
-                        float time = float.Parse(values[2]);
-
-                        if (values[0] == _UserNameInputField.text)
+                        if ( Utils.TryParse(values[1], out int score)
+                            && Utils.TryParse(values[2], out float time)
+                            && values[0] == _UserNameInputField.text)
                         {
                             if (newPersonalBest && !processedHighscore)
                             {
