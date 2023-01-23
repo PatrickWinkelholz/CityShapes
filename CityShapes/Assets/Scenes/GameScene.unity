@@ -12148,41 +12148,6 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: playOnAwake
-      value: 0
-      objectReference: {fileID: 0}
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: ShapeModule.m_Scale.x
-      value: 33.650112
-      objectReference: {fileID: 0}
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: ShapeModule.m_Position.y
-      value: -0.00000006308956
-      objectReference: {fileID: 0}
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: ShapeModule.m_Position.z
-      value: 0.00003460521
-      objectReference: {fileID: 0}
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: ShapeModule.m_Rotation.x
-      value: 0.00036705515
-      objectReference: {fileID: 0}
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: InitialModule.startSize.scalar
-      value: 0.07
-      objectReference: {fileID: 0}
-    - target: {fileID: 691524331612262516, guid: ba32e3eabc7502c458749f26166479d1,
-        type: 3}
-      propertyPath: EmissionModule.rateOverTime.scalar
-      value: 40
-      objectReference: {fileID: 0}
     - target: {fileID: 2347359382281896513, guid: ba32e3eabc7502c458749f26166479d1,
         type: 3}
       propertyPath: m_RootOrder

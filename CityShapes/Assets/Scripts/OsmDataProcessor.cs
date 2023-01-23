@@ -370,43 +370,47 @@ public class OsmDataProcessor : MonoBehaviour
                 road.Name = ways[0].Name;
 
                 List<WayData> waysWithSameName = ways.FindAll(w => w.Name == road.Name);
-                road.Shape = GenerateShape(waysWithSameName);
-
-                //TODO: better road name filtering!
-                if (road.Shape.Points.Count > 0 && road.Name.Length > 1
-                    && road.Name.Substring(0, 2) != "L ")
+                
+                if (road.Name != null && road.Name.Length > 1
+                    && road.Name.Substring(0, 2) != "L "
+                    && road.Name.Substring(0, 2) != "K ")
                 {
-                    //discard road if it's too small
-                    Rect roadBounds = new Rect(road.Shape.Points[0].x, road.Shape.Points[0].y, road.Shape.Points[0].x, road.Shape.Points[0].y);
-                    foreach (Vector2 point in road.Shape.Points)
+                    road.Shape = GenerateShape(waysWithSameName);
+                    if (road.Shape.Points.Count > 0)
                     {
-                        if (point.x < roadBounds.x)
+                        //discard road if it's too small
+                        Rect roadBounds = new Rect(road.Shape.Points[0].x, road.Shape.Points[0].y, road.Shape.Points[0].x, road.Shape.Points[0].y);
+                        foreach (Vector2 point in road.Shape.Points)
                         {
-                            roadBounds.x = point.x;
+                            if (point.x < roadBounds.x)
+                            {
+                                roadBounds.x = point.x;
+                            }
+                            if (point.x > roadBounds.width)
+                            {
+                                roadBounds.width = point.x;
+                            }
+                            if (point.y < roadBounds.y)
+                            {
+                                roadBounds.y = point.y;
+                            }
+                            if (point.y > roadBounds.height)
+                            {
+                                roadBounds.height = point.y;
+                            }
                         }
-                        if (point.x > roadBounds.width)
+                        if (Vector2.SqrMagnitude(roadBounds.size - roadBounds.position) > _MinRoadBoundaryMagnitude)
                         {
-                            roadBounds.width = point.x;
+                            roads.Add(road);
+                            //Debug.Log("PASSED: " + road.Name + ": " + Vector2.SqrMagnitude(roadBounds.size - roadBounds.position));
                         }
-                        if (point.y < roadBounds.y)
-                        {
-                            roadBounds.y = point.y;
-                        }
-                        if (point.y > roadBounds.height)
-                        {
-                            roadBounds.height = point.y;
-                        }
+                        //else
+                        //{
+                        //    Debug.Log("DISCARDED: " + road.Name + ": " + Vector2.SqrMagnitude(roadBounds.size - roadBounds.position));
+                        //}
                     }
-                    if (Vector2.SqrMagnitude(roadBounds.size - roadBounds.position) > _MinRoadBoundaryMagnitude)
-                    {
-                        roads.Add(road);
-                        //Debug.Log("PASSED: " + road.Name + ": " + Vector2.SqrMagnitude(roadBounds.size - roadBounds.position));
-                    }
-                    //else
-                    //{
-                    //    Debug.Log("DISCARDED: " + road.Name + ": " + Vector2.SqrMagnitude(roadBounds.size - roadBounds.position));
-                    //}
                 }
+
                 ways.RemoveAll(w => w.Name == road.Name);
 
             } while (ways.Count > 0);
