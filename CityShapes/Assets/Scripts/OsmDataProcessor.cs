@@ -372,7 +372,9 @@ public class OsmDataProcessor : MonoBehaviour
                 List<WayData> waysWithSameName = ways.FindAll(w => w.Name == road.Name);
                 road.Shape = GenerateShape(waysWithSameName);
 
-                if (road.Shape.Points.Count > 0)
+                //TODO: better road name filtering!
+                if (road.Shape.Points.Count > 0 && road.Name.Length > 1
+                    && road.Name.Substring(0, 2) != "L ")
                 {
                     //discard road if it's too small
                     Rect roadBounds = new Rect(road.Shape.Points[0].x, road.Shape.Points[0].y, road.Shape.Points[0].x, road.Shape.Points[0].y);
