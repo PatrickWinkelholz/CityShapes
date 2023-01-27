@@ -11,6 +11,7 @@ public class PausePanel : MonoBehaviour
     public static PausePanel Instance;
 
     [SerializeField] private float _lerpSpeed = default;
+    [SerializeField] private UnityEngine.EventSystems.EventSystem _EventSystem = null;
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreDisplay = null;
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreDisplayLabel = null;
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreTimeDisplay = null;
@@ -59,12 +60,26 @@ public class PausePanel : MonoBehaviour
         { ObjectType.Road, "Roads" }
     };
     private bool _NewTopscore = false;
+    private bool _Loading = false;
 
     private void Awake()
     {
         Instance = this;
         _CurrentPanel = _LoginPanel;
         _NotPausedPosition = new Vector3(0, -Screen.height, 0);
+
+        _UserNameInputField.onSubmit.AddListener(str => 
+        { 
+            _PasswordInputField.Select(); 
+        });
+        _PasswordInputField.onSubmit.AddListener(str => 
+        { 
+            OnLoginPressed(); 
+        });
+        _SearchInputField.onSubmit.AddListener(str =>
+        {
+            OnSearchPressed();
+        });
     }
 
     private void Start()
@@ -107,6 +122,10 @@ public class PausePanel : MonoBehaviour
         }
 
         _Paused = !_Paused;
+        if (_EventSystem.TryGetComponent(out TabNavigation tabNav))
+        {
+            tabNav.enabled = _Paused && !_Loading;
+        }
         _PauseButton.SetActive(!_Paused);
         _CurrentElementLabel.SetActive(!_Paused);
         _TimeIndicator.gameObject.SetActive(!_Paused);
@@ -124,12 +143,17 @@ public class PausePanel : MonoBehaviour
         _CurrentPanel = panel;
         panel.SetActive(true);
         _ErrorText.text = "";
+        _EventSystem.SetSelectedGameObject(null);
     }
 
     private void OnRestarting()
     {
         ChangePanel(_MenuContentPanel);
-        _CitySearchBackButton.gameObject.SetActive(true);
+        _CitySearchBackButton.onClick.RemoveAllListeners();
+        _CitySearchBackButton.onClick.AddListener(()=> 
+        {
+            OnBackPressed();
+        });
         _GameModeBackButton.gameObject.SetActive(true);
         if (_NewTopscore)
         {
@@ -206,7 +230,7 @@ public class PausePanel : MonoBehaviour
 
     private IEnumerator SubmitScoreRoutine()
     {
-        _LoadingPanel.gameObject.SetActive(true);
+        SetLoading(true);
         _LoadingText.text = "submitting score...";
 
         WWWForm form = new WWWForm();
@@ -226,7 +250,7 @@ public class PausePanel : MonoBehaviour
             else
             {
                 _ErrorText.text = result;
-                _LoadingPanel.gameObject.SetActive(false);
+                SetLoading(false);
             }
         });
     }
@@ -304,7 +328,7 @@ public class PausePanel : MonoBehaviour
             yield break;
         }
 
-        _LoadingPanel.gameObject.SetActive(true);
+        SetLoading(true);
         _LoadingText.text = "contacting server...";
 
         WWWForm form = new WWWForm();
@@ -314,7 +338,7 @@ public class PausePanel : MonoBehaviour
 
         yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
         {
-            _LoadingPanel.gameObject.SetActive(false);
+            SetLoading(false);
 
             //ChangePanel(_CitySearchPanel);
             if (result == "success")
@@ -391,7 +415,7 @@ public class PausePanel : MonoBehaviour
 
     private IEnumerator GenerateCityRoutine(string cityName, string boundingBox)
     {
-        _LoadingPanel.gameObject.SetActive(true);
+        SetLoading(true);
         yield return GameManager.Instance.ChangeCity(cityName, boundingBox, result=>
         { 
             if (result != "success")
@@ -400,7 +424,7 @@ public class PausePanel : MonoBehaviour
             }
         });
         yield return ObtainLeaderboard();
-        _LoadingPanel.gameObject.SetActive(false);
+        SetLoading(false);
     }
 
     private void StartGenerateCityRoutine(string cityName, string boundingBox)
@@ -410,7 +434,7 @@ public class PausePanel : MonoBehaviour
 
     public void OnGameModePressed(int mode)
     {
-        _LoadingPanel.gameObject.SetActive(true);
+        SetLoading(true);
         StartCoroutine(GameManager.Instance.ChangeMode((ObjectType)mode, result =>
         {
             if (result != "success")
@@ -418,7 +442,7 @@ public class PausePanel : MonoBehaviour
                 _ErrorText.text = result;
                 return;
             }
-            _LoadingPanel.gameObject.SetActive(false);
+            SetLoading(false);
             
             if (GameManager.Instance.City != null)
             {
@@ -438,7 +462,7 @@ public class PausePanel : MonoBehaviour
 
     private IEnumerator SearchCityRoutine()
     {
-        _LoadingPanel.gameObject.SetActive(true);
+        SetLoading(true);
         string cityName = _SearchInputField.text.ToLower();
         yield return GameManager.Instance.OsmDataProcessor.SearchCities(cityName, (callbackResult, searchResults) =>
         {
@@ -467,7 +491,7 @@ public class PausePanel : MonoBehaviour
                 }
             }
         });
-        _LoadingPanel.gameObject.SetActive(false);
+        SetLoading(false);
     }
 
     private IEnumerator ObtainLeaderboard(bool newPersonalBest = false, System.Action callback = default)
@@ -483,7 +507,7 @@ public class PausePanel : MonoBehaviour
             yield break;
         }
 
-        _LoadingPanel.gameObject.SetActive(true);
+        SetLoading(true);
         _LoadingText.text = "obtaining leaderboard...";
         _LeaderboardLabel.text = GameManager.Instance.City.name.Split(',')[0] + " - " + _ModeNames[GameManager.Instance.MapObjectType];
         WWWForm form = new WWWForm();
@@ -540,7 +564,7 @@ public class PausePanel : MonoBehaviour
                 _ErrorText.text = result;
             }
             ToggleNewTopscore(newPersonalBest, newHighscore);
-            _LoadingPanel.gameObject.SetActive(false);
+            SetLoading(false);
             callback?.Invoke();
         });
     }
@@ -550,5 +574,15 @@ public class PausePanel : MonoBehaviour
         transform.position = Vector3.Lerp(transform.position, _TargetPosition, Time.deltaTime * _lerpSpeed);
         _TimeIndicator.text = Utils.FormatTime(GameManager.Instance.Timer);
         UpdateScoreDisplay();
+    }
+
+    private void SetLoading(bool value)
+    {
+        _Loading = value;
+        _LoadingPanel.gameObject.SetActive(value);
+        if (_EventSystem.TryGetComponent(out TabNavigation tabNav))
+        {
+            tabNav.enabled = !value && _Paused;
+        }
     }
 }
