@@ -211,6 +211,8 @@ public class OsmDataProcessor : MonoBehaviour
     private IEnumerator GenerateCityShape(System.Action<Shape> callback)
     {
         string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + _CityName + "$\",i][\"admin_level\"~\"4|6|8\"](" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._; >;);out qt;";
+        Debug.Log("requesting city shape using query: " + overpassQuery);
+
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
             if (result[0] != '<')
@@ -268,7 +270,8 @@ public class OsmDataProcessor : MonoBehaviour
         {
             areaFilterString = "[admin_level=" + _CityAdminLevel + "]";
         }
-        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + "(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ")->.b;rel[boundary=administrative][\"admin_level\"~\"9|10\"](area.b);(._; >;);out qt;";
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + ";rel[boundary=administrative][\"admin_level\"~\"9|10\"](area)(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._; >;);out qt;";
+        Debug.Log("requesting Districts using query: " + overpassQuery);
 
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {
@@ -340,7 +343,8 @@ public class OsmDataProcessor : MonoBehaviour
         {
             areaFilterString = "[admin_level=" + _CityAdminLevel + "]";
         }
-        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + "(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ")->.a;way[~\"^name|ref$\"~\".\"][\"highway\"~\"^(trunk|motorway|primary|secondary" /*|tertiary*/ + ")$\"](area.a);(._;>;);out qt;";
+        string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + ";way[~\"^name|ref$\"~\".\"][\"highway\"~\"^(trunk|motorway|primary|secondary" /*|tertiary*/ + ")$\"](area)(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._;>;);out qt;";
+        Debug.Log("requesting roads using query: " + overpassQuery);
 
         yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
         {

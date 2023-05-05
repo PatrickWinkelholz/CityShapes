@@ -100,29 +100,14 @@ public class GameManager : MonoBehaviour
             {
                 Destroy(_City.gameObject);
             }
-            if (_BackgroundSprites != null)
-            {
-                foreach (SpriteRenderer sprite in _BackgroundSprites)
-                {
-                    Destroy(sprite.gameObject);
-                }
-                _BackgroundSprites.Clear();
-            }
+
 
             Debug.Log("creating city with " + cityData.MapObjects.Count + " mapObjects and center " + cityData.Shape.Center);
 
             _City = Instantiate(_CityPrefab);
             _City.Initialize(cityData);
 
-            //_BackgroundSprites
-            _BackgroundSprites = new List<SpriteRenderer>();
-            foreach (TileData tileData in cityData.BackgroundTiles)
-            {
-                SpriteRenderer sprite = Instantiate(_BackgroundSpritePrefab);
-                sprite.sprite = tileData.Sprite;
-                sprite.transform.position = tileData.Pos;
-                _BackgroundSprites.Add(sprite);
-            }
+            GenerateBackgroundTiles(cityData);
 
             RestartGame();
             cityChangedCallback?.Invoke("success");
@@ -139,6 +124,27 @@ public class GameManager : MonoBehaviour
         //{
         //    yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
         //}
+    }
+
+    public void GenerateBackgroundTiles(CityData cityData)
+    {
+        if (_BackgroundSprites != null)
+        {
+            foreach (SpriteRenderer sprite in _BackgroundSprites)
+            {
+                Destroy(sprite.gameObject);
+            }
+            _BackgroundSprites.Clear();
+        }
+
+        _BackgroundSprites = new List<SpriteRenderer>();
+        foreach (TileData tileData in cityData.BackgroundTiles)
+        {
+            SpriteRenderer sprite = Instantiate(_BackgroundSpritePrefab);
+            sprite.sprite = tileData.Sprite;
+            sprite.transform.position = tileData.Pos;
+            _BackgroundSprites.Add(sprite);
+        }
     }
 
     public void EndGame(bool submitScore)

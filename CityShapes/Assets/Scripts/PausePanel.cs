@@ -23,6 +23,7 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private TMPro.TMP_InputField _UserNameInputField = null;
     [SerializeField] private TMPro.TMP_InputField _PasswordInputField = null;
     [SerializeField] private TMPro.TextMeshProUGUI _ErrorText = null;
+    [SerializeField] private GameObject _LogoImage = null;
     [SerializeField] private GameObject _CitySearchPanel = null;
     [SerializeField] private GameObject _MenuContentPanel = null;
     [SerializeField] private GameObject _LeaderboardPanel = null;
@@ -288,6 +289,7 @@ public class PausePanel : MonoBehaviour
         }
         GameManager.Instance.EndGame(false);
         ChangePanel(_LoginPanel);
+        _LogoImage.SetActive(true);
     }
 
     public void OnLoginPressed()
@@ -343,6 +345,7 @@ public class PausePanel : MonoBehaviour
             //ChangePanel(_CitySearchPanel);
             if (result == "success")
             {
+                _LogoImage.SetActive(false);
                 if (GameManager.Instance.City != null)
                 {
                     ChangePanel(_MenuContentPanel);
