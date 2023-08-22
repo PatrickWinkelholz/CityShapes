@@ -1477,6 +1477,7 @@ GameObject:
   - component: {fileID: 183168834}
   - component: {fileID: 183168833}
   - component: {fileID: 183168832}
+  - component: {fileID: 183168835}
   m_Layer: 5
   m_Name: Logo
   m_TagString: Untagged
@@ -1562,6 +1563,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 183168830}
   m_CullTransparentMesh: 1
+--- !u!114 &183168835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 183168830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 26820c410caf45247aaddf03444dc5d5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _period: 1.5
+  _amplitude: 0.1
+  _shift: 1.1
 --- !u!1 &200178766
 GameObject:
   m_ObjectHideFlags: 0
@@ -3506,6 +3522,12 @@ MonoBehaviour:
   _MinCameraSize: 3
   _MinCameraPosition: {x: -35, y: -35}
   _MaxCameraPosition: {x: 35, y: 35}
+  _BackgroundTilesAsset: {fileID: 11400000, guid: f94993a66c682304d91b3cb12cf1ab86,
+    type: 2}
+  _ZPos: -10
+  _MenuMoveSpeed: 0.05
+  _MenuMoveRadius: 4
+  _MenuSizeFactor: 0.1
 --- !u!20 &519420031
 Camera:
   m_ObjectHideFlags: 0
@@ -10980,6 +11002,8 @@ MonoBehaviour:
     type: 3}
   _BackgroundSpritePrefab: {fileID: 8623681491476446459, guid: 3f0810ed175e4514d9534d86d0447bc1,
     type: 3}
+  _BackgroundTilesAsset: {fileID: 11400000, guid: f94993a66c682304d91b3cb12cf1ab86,
+    type: 2}
   MapObjectType: 0
 --- !u!4 &1801965206
 Transform:
@@ -11045,6 +11069,8 @@ MonoBehaviour:
   _BackgroundTileZOffset: 1
   _Zoom: 13
   _MinRoadBoundaryMagnitude: 0.05
+  _BackgroundTilesAsset: {fileID: 11400000, guid: f94993a66c682304d91b3cb12cf1ab86,
+    type: 2}
 --- !u!114 &1803837978 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 5817385696567020634, guid: fa6e00e271be4cb469a6c57594af9985,

@@ -15,12 +15,19 @@ public class CameraController : MonoBehaviour
     [SerializeField] private float _MinCameraSize = 0.8f;
     [SerializeField] private Vector2 _MinCameraPosition = default;
     [SerializeField] private Vector2 _MaxCameraPosition = default;
+    [SerializeField] private BackgroundTilesAsset _BackgroundTilesAsset = default;
+    [SerializeField] private float _ZPos = -10.0f;
+    [SerializeField] private float _MenuMoveSpeed = 0.1f;
+    [SerializeField] private float _MenuMoveRadius = 5.0f;
+    [SerializeField] private float _MenuSizeFactor = 0.3f;
 
     private Vector3 _MousePosDelta = Vector3.zero;
     private Vector3 _LastMousePos = Vector3.zero;
 
     private Vector3 _StartPosition = default;
     private float _StartSize = default;
+
+    private bool _menuModeActive = false;
 
     private void Start()
     {
@@ -29,26 +36,52 @@ public class CameraController : MonoBehaviour
         _StartSize = _Camera.orthographicSize;
     }
 
+    public void ActivateMenuMode()
+    {
+        _menuModeActive = true;
+
+        _StartPosition = _BackgroundTilesAsset.CameraStartPosition;
+        _MinCameraPosition = _BackgroundTilesAsset.MinCameraPosition;
+        _MaxCameraPosition = _BackgroundTilesAsset.MaxCameraPosition;
+        _MinCameraSize = _BackgroundTilesAsset.MinCameraSize;
+        _MaxCameraSize = _BackgroundTilesAsset.MaxCameraSize;
+
+        //TODO: combine this with Reset better. code duplication;
+        _StartSize = _MinCameraSize + (_MaxCameraSize - _MinCameraSize) * _MenuSizeFactor;
+        _Camera.orthographicSize = _StartSize;
+        _Camera.backgroundColor = new Color(0.9647059f, 0.8784314f, 0.8235294f);
+        transform.position = _StartPosition;
+    }
+
     public void Reset(CityData cityData)
     {
+        _menuModeActive = false;
         _MinCameraPosition = cityData.BackgroundTiles[0, 0].Pos;
         _MaxCameraPosition = cityData.BackgroundTiles[cityData.BackgroundTiles.GetLength(0) - 1, cityData.BackgroundTiles.GetLength(1) - 1].Pos;
-        _StartPosition = new Vector3(cityData.Shape.Center.x, cityData.Shape.Center.y, -10);
-
+        _StartPosition = new Vector3(cityData.Shape.Center.x, cityData.Shape.Center.y, _ZPos);
         _MaxCameraSize = (cityData.BackgroundTiles.GetLength(1) - GameManager.Instance.OsmDataProcessor.NrExtraBackgroundTiles.x * 2) * 1.9f; //using random value to avoid maxSize getting too large
+        
         _StartSize = _MaxCameraSize;
-        _Camera.orthographicSize = _MaxCameraSize;
-
+        _Camera.orthographicSize = _StartSize;
         _Camera.backgroundColor = new Color(0.9647059f, 0.8784314f, 0.8235294f);
-
         transform.position = _StartPosition;
+
+        _BackgroundTilesAsset.CameraStartPosition = _StartPosition;
+        _BackgroundTilesAsset.MinCameraPosition = _MinCameraPosition;
+        _BackgroundTilesAsset.MaxCameraPosition = _MaxCameraPosition;
+        _BackgroundTilesAsset.MinCameraSize = _MinCameraSize;
+        _BackgroundTilesAsset.MaxCameraSize = _MaxCameraSize;
     }
 
     private void Update()
     {
         _MousePosDelta = Input.mousePosition - _LastMousePos;
 
-        if (!Blocked)
+        if (_menuModeActive)
+        {
+            transform.position = new Vector3(_StartPosition.x + Mathf.Sin(Time.time * _MenuMoveSpeed) * _MenuMoveRadius, _StartPosition.y + Mathf.Cos(Time.time * _MenuMoveSpeed) * _MenuMoveRadius, _ZPos);
+        }
+        else if (!Blocked)
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
             if (Input.touchCount == 1)

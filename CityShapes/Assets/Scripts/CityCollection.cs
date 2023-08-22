@@ -21,6 +21,8 @@ public struct MapObjectData
 public struct CityData
 {
     public string Name;
+    public string CountryCode;
+    public string FullName => Name + ", " + CountryCode;
     public Shape Shape;
     public List<MapObjectData> MapObjects;
     public TileData[,] BackgroundTiles;

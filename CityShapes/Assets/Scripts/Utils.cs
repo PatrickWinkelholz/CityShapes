@@ -63,4 +63,14 @@ public class Utils
             callback?.Invoke(webRequest);
         }
     }
+
+    public static Sprite LoadSprite(int resolution, byte[] data)
+    {
+        Texture2D texture = new Texture2D(resolution, resolution);
+        if (!ImageConversion.LoadImage(texture, data))
+        {
+            Debug.LogWarning("Sprite conversion failed!");
+        }
+        return Sprite.Create(texture, new Rect(0, 0, resolution, resolution), new Vector2(0, 1.0f));
+    }
 }

@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using UnityEngine;
+using static BackgroundTilesAsset;
 
 public class GameManager : MonoBehaviour
 {
@@ -21,6 +23,7 @@ public class GameManager : MonoBehaviour
 
     [SerializeField] private City _CityPrefab = default;
     [SerializeField] private SpriteRenderer _BackgroundSpritePrefab = default;
+    [SerializeField] private BackgroundTilesAsset _BackgroundTilesAsset = default;
 
     private List<SpriteRenderer> _BackgroundSprites = null;
     public City City => _City;
@@ -36,7 +39,11 @@ public class GameManager : MonoBehaviour
 
     private void Start()
     {
-        //RestartGame();
+        if (_BackgroundTilesAsset.Tiles != null && _BackgroundTilesAsset.Tiles.Count > 0)
+        {
+            GenerateBackgroundTiles(_BackgroundTilesAsset.Tiles);
+            _Camera.ActivateMenuMode();
+        }        
     }
 
     private void Update()
@@ -107,7 +114,7 @@ public class GameManager : MonoBehaviour
             _City = Instantiate(_CityPrefab);
             _City.Initialize(cityData);
 
-            GenerateBackgroundTiles(cityData);
+            GenerateBackgroundTiles(cityData.BackgroundTiles);
 
             RestartGame();
             cityChangedCallback?.Invoke("success");
@@ -126,7 +133,19 @@ public class GameManager : MonoBehaviour
         //}
     }
 
-    public void GenerateBackgroundTiles(CityData cityData)
+    public void GenerateBackgroundTiles(IReadOnlyList<SerializableSprite> tiles)
+    {
+        TileData[,] tileData = new TileData[tiles.Count, 1];
+        for (int i = 0; i < tiles.Count; i++)
+        {
+            SerializableSprite tile = tiles[i];
+            tileData[i, 0].Sprite = Utils.LoadSprite(_OsmDataProcessor.TileResolution, tile.Data);
+            tileData[i, 0].Pos = tile.Position;
+        }
+        GenerateBackgroundTiles(tileData);
+    }
+
+    public void GenerateBackgroundTiles(TileData[,] backgroundTiles)
     {
         if (_BackgroundSprites != null)
         {
@@ -138,7 +157,7 @@ public class GameManager : MonoBehaviour
         }
 
         _BackgroundSprites = new List<SpriteRenderer>();
-        foreach (TileData tileData in cityData.BackgroundTiles)
+        foreach (TileData tileData in backgroundTiles)
         {
             SpriteRenderer sprite = Instantiate(_BackgroundSpritePrefab);
             sprite.sprite = tileData.Sprite;

@@ -69,6 +69,7 @@ public class OsmDataProcessor : MonoBehaviour
 
     public System.Action<string> StatusChangedEvent = default;
 
+    public int TileResolution => _TileResolution;
     [SerializeField] private int _TileResolution = 256;
     [SerializeField] private float _SqrMagnitudeDelta = 0.000000001f;
     [SerializeField] private float _SqrMagnitudeLargestWayGap = 0.01f;
@@ -77,6 +78,7 @@ public class OsmDataProcessor : MonoBehaviour
     [SerializeField] private float _BackgroundTileZOffset = 20.0f;
     [SerializeField] private int _Zoom = 13;
     [SerializeField] private float _MinRoadBoundaryMagnitude = 0.1f;
+    [SerializeField] private BackgroundTilesAsset _BackgroundTilesAsset = default;
 
     static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
 
@@ -482,6 +484,7 @@ public class OsmDataProcessor : MonoBehaviour
         Vector2Int totalTiles = necessaryTiles + _NrExtraBackgroundTiles * 2;
 
         TileData[,] tiles = new TileData[totalTiles.y, totalTiles.x];
+        _BackgroundTilesAsset.ClearTiles();
 
         int processedTiles = 0;
         for (int y = 0; y < totalTiles.y; y++)
@@ -515,15 +518,11 @@ public class OsmDataProcessor : MonoBehaviour
         string link = "https://stamen-tiles.a.ssl.fastly.net/watercolor/" + _Zoom + "/" + x + "/" + y + ".jpg";
         yield return Utils.SendWebRequest(link, result =>
         {
-            Texture2D texture = new Texture2D(_TileResolution, _TileResolution);
-            if (!ImageConversion.LoadImage(texture, result))
-            {
-                Debug.LogWarning("Background Sprite conversion failed!");
-            }
             TileData tileData = new TileData();
-            tileData.Sprite = Sprite.Create(texture, new Rect(0, 0, _TileResolution, _TileResolution), new Vector2(0, 1.0f));
+            tileData.Sprite = Utils.LoadSprite(_TileResolution, result);
             tileData.Pos = new Vector3(x, -y, 0) * (_TileResolution / 100.0f);
             tileData.Pos.z = _BackgroundTileZOffset;
+            _BackgroundTilesAsset.SaveTile(result, tileData.Pos);
             callback?.Invoke(destX, destY, tileData);
         });
     }
