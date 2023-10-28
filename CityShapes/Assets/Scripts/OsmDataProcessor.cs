@@ -80,8 +80,6 @@ public class OsmDataProcessor : MonoBehaviour
     [SerializeField] private float _MinRoadBoundaryMagnitude = 0.1f;
     [SerializeField] private BackgroundTilesAsset _BackgroundTilesAsset = default;
 
-    static string _OverpassUrl = "https://overpass-api.de/api/interpreter?data=";
-
     private string[] _CityBbox = default;
     private int _CityAdminLevel = default;
     private string _CityName = default;
@@ -90,7 +88,7 @@ public class OsmDataProcessor : MonoBehaviour
     {
         StatusChangedEvent?.Invoke("Requesting search results...");
 
-        yield return Utils.SendWebRequest("https://nominatim.openstreetmap.org/search?q=" + query + "&format=xml&addressdetails=1&extratags=1", result =>
+        yield return Utils.SendWebRequest(WebDependancies.Nominatim + query + "&format=xml&addressdetails=1&extratags=1", result =>
         {
             if (result.Length == 0 || result[0] != '<')
             {
@@ -215,7 +213,7 @@ public class OsmDataProcessor : MonoBehaviour
         string overpassQuery = "relation[boundary=administrative][~\"^name(:en)?$\"~\"^" + _CityName + "$\",i][\"admin_level\"~\"4|6|8\"](" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._; >;);out qt;";
         Debug.Log("requesting city shape using query: " + overpassQuery);
 
-        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
+        yield return Utils.SendWebRequest(WebDependancies.Overpass + overpassQuery, result =>
         {
             if (result[0] != '<')
             {
@@ -275,7 +273,7 @@ public class OsmDataProcessor : MonoBehaviour
         string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + ";rel[boundary=administrative][\"admin_level\"~\"9|10\"](area)(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._; >;);out qt;";
         Debug.Log("requesting Districts using query: " + overpassQuery);
 
-        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
+        yield return Utils.SendWebRequest(WebDependancies.Overpass + overpassQuery, result =>
         {
             if (result[0] != '<')
             {
@@ -348,7 +346,7 @@ public class OsmDataProcessor : MonoBehaviour
         string overpassQuery = "area[~\"^name(:en)?$\"~\"^" + _CityName + "$\",i]" + areaFilterString + ";way[~\"^name|ref$\"~\".\"][\"highway\"~\"^(trunk|motorway|primary|secondary" /*|tertiary*/ + ")$\"](area)(" + _CityBbox[0] + "," + _CityBbox[2] + "," + _CityBbox[1] + "," + _CityBbox[3] + ");(._;>;);out qt;";
         Debug.Log("requesting roads using query: " + overpassQuery);
 
-        yield return Utils.SendWebRequest(_OverpassUrl + overpassQuery, result =>
+        yield return Utils.SendWebRequest(WebDependancies.Overpass + overpassQuery, result =>
         {
             if (result[0] != '<')
             {
@@ -515,7 +513,7 @@ public class OsmDataProcessor : MonoBehaviour
     //a lot of requests will be running parallel. passing destX and destY is necessary because their local values will have changed by the time the callback is called
     private IEnumerator RequestTile( int x, int y, int destX, int destY, System.Action<int, int, TileData> callback)
     {
-        string link = "https://stamen-tiles.a.ssl.fastly.net/watercolor/" + _Zoom + "/" + x + "/" + y + ".jpg";
+        string link = WebDependancies.WatercolorTiles + _Zoom + "/" + x + "/" + y + ".jpg";
         yield return Utils.SendWebRequest(link, result =>
         {
             TileData tileData = new TileData();

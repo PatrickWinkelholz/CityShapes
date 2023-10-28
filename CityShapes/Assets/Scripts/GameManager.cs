@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Runtime.Serialization;
 using UnityEngine;
 using static BackgroundTilesAsset;
@@ -33,6 +34,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+        CultureInfo.CurrentCulture = Utils.CultureInfo;
         Instance = this;
         GameOver = true;
     }

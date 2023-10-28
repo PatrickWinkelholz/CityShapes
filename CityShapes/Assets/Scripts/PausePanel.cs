@@ -242,7 +242,7 @@ public class PausePanel : MonoBehaviour
         form.AddField("userName", _UserNameInputField.text);
         form.AddField("password", _PasswordInputField.text);
 
-        yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
+        yield return Utils.SendWebRequest(WebDependancies.Leaderboard, form, result => 
         {
             if (result == "success")
             {
@@ -292,10 +292,10 @@ public class PausePanel : MonoBehaviour
         _LogoImage.SetActive(true);
     }
 
-    public void OnLoginPressed()
+    public void OnLoginPressed(bool guest = false)
     {
         _ErrorText.text = "";
-        StartCoroutine(LoginRoutine(false));
+        StartCoroutine(LoginRoutine(false, guest));
     }
 
     public void OnRegisterPressed()
@@ -304,27 +304,30 @@ public class PausePanel : MonoBehaviour
         StartCoroutine(LoginRoutine(true));
     }
 
-    private IEnumerator LoginRoutine(bool register)
+    private IEnumerator LoginRoutine(bool register, bool guest = false)
     {
-        if (_UserNameInputField.text == "")
+        string username = guest ? "Guest" : _UserNameInputField.text;
+        string password = guest ? "28394650394760" : _PasswordInputField.text;
+
+        if (username == "")
         {
             _ErrorText.text = "please enter username!";
             yield break;
         }
-        if (_PasswordInputField.text == "")
+        if (password == "")
         {
             _ErrorText.text = "please enter password!";
             yield break;
         }
         System.Text.RegularExpressions.Regex regex = new System.Text.RegularExpressions.Regex("[A-Za-z0-9]+");
 
-        if (!regex.IsMatch(_UserNameInputField.text))
+        if (!regex.IsMatch(username))
         {
             _ErrorText.text = "username contains invalid characters!";
             yield break;
         }
 
-        if (!regex.IsMatch(_PasswordInputField.text))
+        if (!regex.IsMatch(password))
         {
             _ErrorText.text = "password contains invalid characters!";
             yield break;
@@ -335,10 +338,10 @@ public class PausePanel : MonoBehaviour
 
         WWWForm form = new WWWForm();
         form.AddField( register ? "register" : "login", 1);
-        form.AddField("userName", _UserNameInputField.text);
-        form.AddField("password", _PasswordInputField.text);
+        form.AddField("userName", username);
+        form.AddField("password", password);
 
-        yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result => 
+        yield return Utils.SendWebRequest(WebDependancies.Leaderboard, form, result => 
         {
             SetLoading(false);
 
@@ -397,12 +400,12 @@ public class PausePanel : MonoBehaviour
 
     public void OnWebsitePressed()
     {
-        Application.OpenURL("https://patrickwinkelholz.com/");
+        Application.OpenURL(WebDependancies.Website);
     }
 
     public void OnContactPressed()
     {
-        Application.OpenURL("mailto:patrick.winkelholz@gmail.com?subject=CityShapes%20App");
+        Application.OpenURL(WebDependancies.MailContact);
     }
 
     public void OnRestartPressed()
@@ -517,7 +520,7 @@ public class PausePanel : MonoBehaviour
         form.AddField("readLeaderboard", 1);
         form.AddField("cityName", GameManager.Instance.City.name);
         form.AddField("mode", _ModeAbbreviations[GameManager.Instance.MapObjectType]);
-        yield return Utils.SendWebRequest("https://patrickwinkelholz.com/leaderboard.php", form, result =>
+        yield return Utils.SendWebRequest(WebDependancies.Leaderboard, form, result =>
         {
             string[] entries = result.Split('\n');
             bool newHighscore = false;
