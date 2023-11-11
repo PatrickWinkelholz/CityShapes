@@ -431,31 +431,6 @@ public class OsmDataProcessor : MonoBehaviour
         });
     }
 
-    //private void ExtrudeLine(List<Vector2> line)
-    //{
-    //    LineRenderer
-
-    //    //https://gamedev.stackexchange.com/questions/75182/how-can-i-create-or-extrude-a-mesh-along-a-spline
-    //    for (float i = 0; i <= 1.0f;)
-    //    {
-    //        Vector2 p = CatmullRom.calculatePoint(dataSet, i);
-    //        Vector2 deriv = CatmullRom.calculateDerivative(dataSet, i);
-    //        float len = deriv.Length();
-    //        i += step / len;
-    //        deriv.divide(len);
-    //        deriv.scale(thickness);
-    //        deriv.set(-deriv.y, deriv.x);
-    //        Vector2 v1 = new Vector2();
-    //        v1.set(p).add(deriv);
-    //        vertices.add(v1);
-    //        Vector2 v2 = new Vector2();
-    //        v2.set(p).sub(deriv);
-    //        vertices.add(v2);
-
-    //        if (i > 1.0f) i = 1.0f;
-    //    }
-    //}
-
     private IEnumerator GenerateBackgroundTiles(System.Action<TileData[,]> callback)
     {
         //calculate tiles

@@ -5,7 +5,7 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "BackgroundTiles", menuName = "BackgroundTiles")]
 public class BackgroundTilesAsset : ScriptableObject
 {
-    //jamming camera data in here for now. not that clean but eh
+    //jamming camera data in here for now. TODO: seperate camera data from backgroundTileAsset data 
     public float MaxCameraSize = 6.5f;
     public float MinCameraSize = 0.8f;
     public Vector2 MinCameraPosition = default;

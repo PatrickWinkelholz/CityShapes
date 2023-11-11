@@ -17,8 +17,6 @@ public class PausePanel : MonoBehaviour
     [SerializeField] private TMPro.TextMeshProUGUI _ScoreTimeDisplay = null;
     [SerializeField] private TMPro.TextMeshProUGUI _HighScoreDisplay = null;
     [SerializeField] private TMPro.TextMeshProUGUI _HighScoreTimeDisplay = null;
-    //[SerializeField] private Button _MapObjectsButton = null;
-    //[SerializeField] private Button _LandmarksButton = null;
     [SerializeField] private TMPro.TMP_InputField _SearchInputField = null;
     [SerializeField] private TMPro.TMP_InputField _UserNameInputField = null;
     [SerializeField] private TMPro.TMP_InputField _PasswordInputField = null;
@@ -169,13 +167,17 @@ public class PausePanel : MonoBehaviour
         {
             Color.RGBToHSV(_ScoreDisplayLabel.colorGradient.topLeft, out float h, out float s, out float v);
             h += Time.deltaTime * 0.4f;
-            if (h > 1.0f) h -= 1.0f;
+            if (h > 1.0f) 
+                h -= 1.0f;
             float h2 = h + 0.25f;
-            if (h2 > 1.0f) h2 -= 1.0f;
+            if (h2 > 1.0f) 
+                h2 -= 1.0f;
             float h3 = h + 0.5f;
-            if (h3 > 1.0f) h3 -= 1.0f;
+            if (h3 > 1.0f) 
+                h3 -= 1.0f;
             float h4 = h + 0.75f;
-            if (h4 > 1.0f) h4 -= 1.0f;
+            if (h4 > 1.0f) 
+                h4 -= 1.0f;
 
             _ScoreDisplayLabel.colorGradient =
             new TMPro.VertexGradient(
@@ -256,22 +258,6 @@ public class PausePanel : MonoBehaviour
         });
     }
 
-    //public void OnMapObjectsPressed()
-    //{
-    //    _LandmarksButton.interactable = true;
-    //    _MapObjectsButton.interactable = false;
-
-    //    UpdateScoreDisplay();
-    //}
-
-    //public void OnLandmarksPressed()
-    //{
-    //    _LandmarksButton.interactable = false;
-    //    _MapObjectsButton.interactable = true;
-
-    //    UpdateScoreDisplay();
-    //}
-
     public void OnLeaderboardPressed()
     {
         ChangePanel(_LeaderboardPanel);
@@ -306,6 +292,8 @@ public class PausePanel : MonoBehaviour
 
     private IEnumerator LoginRoutine(bool register, bool guest = false)
     {
+        //hardcoding guest account for now TODO: implement better solution for guest account!
+        //(leaking the password like this is ok for now because Guest is a public account accessible by anyone anyways)
         string username = guest ? "Guest" : _UserNameInputField.text;
         string password = guest ? "28394650394760" : _PasswordInputField.text;
 
@@ -345,7 +333,6 @@ public class PausePanel : MonoBehaviour
         {
             SetLoading(false);
 
-            //ChangePanel(_CitySearchPanel);
             if (result == "success")
             {
                 _LogoImage.SetActive(false);

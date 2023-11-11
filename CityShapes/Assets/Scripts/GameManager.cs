@@ -14,7 +14,6 @@ public class GameManager : MonoBehaviour
     public event System.Action<bool> GameOverEvent;
     public event System.Action GameRestartingEvent;
 
-    //[SerializeField] private CityCollection _CityCollection = null;
     public OsmDataProcessor OsmDataProcessor => _OsmDataProcessor;
     [SerializeField] private OsmDataProcessor _OsmDataProcessor = default;
     public GameMode GameMode => _GameMode;
@@ -100,11 +99,6 @@ public class GameManager : MonoBehaviour
                 return;
             }
 
-            //if (!_CityCollection.Cities.ContainsKey(cityName))
-            //{
-            //    _CityCollection.Cities.Add(cityName, cityData);
-            //}
-
             if (_City)
             {
                 Destroy(_City.gameObject);
@@ -124,15 +118,6 @@ public class GameManager : MonoBehaviour
         yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
 
         //TODO: caching!!!!
-
-        //if (_CityCollection.Cities.TryGetValue(cityName, out CityData outCityData))
-        //{
-        //    callback.Invoke("success", outCityData);
-        //}
-        //else
-        //{
-        //    yield return _OsmDataProcessor.GenerateCityData(cityName, boundingBox, callback);
-        //}
     }
 
     public void GenerateBackgroundTiles(IReadOnlyList<SerializableSprite> tiles)

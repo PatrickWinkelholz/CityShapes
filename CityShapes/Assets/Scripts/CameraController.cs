@@ -46,7 +46,7 @@ public class CameraController : MonoBehaviour
         _MinCameraSize = _BackgroundTilesAsset.MinCameraSize;
         _MaxCameraSize = _BackgroundTilesAsset.MaxCameraSize;
 
-        //TODO: combine this with Reset better. code duplication;
+        //TODO: combine this with Reset better. avoid code duplication;
         _StartSize = _MinCameraSize + (_MaxCameraSize - _MinCameraSize) * _MenuSizeFactor;
         _Camera.orthographicSize = _StartSize;
         _Camera.backgroundColor = new Color(0.9647059f, 0.8784314f, 0.8235294f);
@@ -59,7 +59,7 @@ public class CameraController : MonoBehaviour
         _MinCameraPosition = cityData.BackgroundTiles[0, 0].Pos;
         _MaxCameraPosition = cityData.BackgroundTiles[cityData.BackgroundTiles.GetLength(0) - 1, cityData.BackgroundTiles.GetLength(1) - 1].Pos;
         _StartPosition = new Vector3(cityData.Shape.Center.x, cityData.Shape.Center.y, _ZPos);
-        _MaxCameraSize = (cityData.BackgroundTiles.GetLength(1) - GameManager.Instance.OsmDataProcessor.NrExtraBackgroundTiles.x * 2) * 1.9f; //using random value to avoid maxSize getting too large
+        _MaxCameraSize = (cityData.BackgroundTiles.GetLength(1) - GameManager.Instance.OsmDataProcessor.NrExtraBackgroundTiles.x * 2) * 1.9f; //using hardcoded value to avoid maxSize from getting too large TODO: implement dynamic max camera size 
         
         _StartSize = _MaxCameraSize;
         _Camera.orthographicSize = _StartSize;
@@ -105,6 +105,7 @@ public class CameraController : MonoBehaviour
 #else
             if (Input.GetMouseButton(0))
             {
+                //in webGL builds the mouse position isn't processed accuratly, scaling by 1.65 to approximate
                 //TODO don't scale by artificial value here, find out what causes mouse to behave differently on webGL.
                 MoveCamera(_MousePosDelta * 1.65f);
             }
@@ -140,7 +141,7 @@ public class CameraController : MonoBehaviour
     {
         Vector3 newPosition = transform.position;
         newPosition -= difference * (_Camera.orthographicSize / 1000);
-        float lowerXBound = _MinCameraPosition.x + _Camera.orthographicSize / 2.0f + 1.5f; //no idea why + 1.5f is necessary here but without it theres always a slim line on the left
+        float lowerXBound = _MinCameraPosition.x + _Camera.orthographicSize / 2.0f + 1.5f; //no idea why + 1.5f is necessary here but without it theres always a slim line on the left TODO: fix
         float upperXBound = _MaxCameraPosition.x - _Camera.orthographicSize / 2.0f;
         float lowerYBound = _MaxCameraPosition.y + _Camera.orthographicSize;
         float upperYBound = _MinCameraPosition.y - _Camera.orthographicSize;

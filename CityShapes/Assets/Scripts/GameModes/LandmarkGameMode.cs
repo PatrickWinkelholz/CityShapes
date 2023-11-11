@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+//currently unused
 public class LandmarkGameMode : GameMode
 {
     [SerializeField] private LandmarkCollection _Landmarks = null;
-    //[SerializeField] private LandmarkCollection _NewLandmarks = null;
     public GameObject Marker = null;
     public GameObject NewMarker = null;
 
@@ -19,9 +19,5 @@ public class LandmarkGameMode : GameMode
         {
             Instantiate(Marker, (Vector3)data.Location, Quaternion.identity);
         }
-        //foreach (LandmarkCollection.LandmarkData data in _NewLandmarks.Landmarks)
-        //{
-        //    Instantiate(NewMarker, (Vector3)data.Location, Quaternion.identity);
-        //}
     }
 }

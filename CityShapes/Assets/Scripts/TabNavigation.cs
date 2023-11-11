@@ -43,7 +43,7 @@ public class TabNavigation : MonoBehaviour
 
             // this code would be nicer but for some reason TMP.Inputfields call their OnSubmit message already while Buttons do not,
             // so this code would invoke it twice.
-            // 
+             
             //ISubmitHandler handler = (ISubmitHandler)current.GetComponent(typeof(ISubmitHandler));
             //if (handler != null)
             //{
